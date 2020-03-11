@@ -87,7 +87,7 @@ class GeometrySubpass : public Subpass
 
 	void update_uniform(CommandBuffer &command_buffer, sg::Node &node, size_t thread_index = 0);
 
-	void draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	virtual void draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
   protected:
 	/**
@@ -103,7 +103,6 @@ class GeometrySubpass : public Subpass
 
 	sg::Scene &scene;
 
-  private:
 	void draw_submesh_command(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh);
 };
 
