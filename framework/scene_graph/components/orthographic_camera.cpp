@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-#include "perspective_camera.h"
+#include "orthographic_camera.h"
 
 VKBP_DISABLE_WARNINGS()
 #include <glm/gtc/matrix_transform.hpp>
-#include "orthographic_camera.h"
 VKBP_ENABLE_WARNINGS()
 
 namespace vkb

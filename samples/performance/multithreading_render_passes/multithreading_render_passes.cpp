@@ -126,7 +126,7 @@ std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_lighting
     return lighting_render_pipeline;
 }
 
-void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D& extent)
+void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D &extent)
 {
     VkViewport viewport{};
     viewport.width = static_cast<float>(extent.width);
@@ -220,17 +220,6 @@ MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &ren
 {
 }
 
-void MultithreadingRenderPasses::ShadowSubpass::prepare()
-{
-    GeometrySubpass::prepare();
-}
-
-void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer &command_buffer)
-{
-    command_buffer.set_depth_bias(-1.4f, 0.0f, -1.7f);
-    GeometrySubpass::draw(command_buffer);
-}
-
 void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face)
 {
     auto &device = command_buffer.get_device();
@@ -245,6 +234,7 @@ void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer 
     }
 
     command_buffer.set_rasterization_state(rasterization_state);
+    command_buffer.set_depth_bias(-1.4f, 0.0f, -1.7f);
 
     vkb::MultisampleState multisample_state{};
     multisample_state.rasterization_samples = sample_count;

@@ -48,10 +48,6 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
             vkb::sg::Scene &scene,
             vkb::sg::Camera &camera);
 
-        virtual void prepare() override;
-
-        virtual void draw(vkb::CommandBuffer &command_buffer) override;
-
         virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
     };
 
