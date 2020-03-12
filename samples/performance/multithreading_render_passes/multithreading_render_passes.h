@@ -34,6 +34,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	virtual bool prepare(vkb::Platform &platform) override;
 
+    virtual void update(float delta_time) override;
+
 	virtual ~MultithreadingRenderPasses() = default;
 
     /**
@@ -91,8 +93,6 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
        */
       std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
 
-      void draw_renderpass(vkb::CommandBuffer &command_buffer, vkb::RenderTarget &render_target) override;
-
       std::vector<std::unique_ptr<vkb::RenderTarget>> shadow_render_targets;
 
       /// 1. Pipeline for shadowmap rendering
@@ -104,6 +104,12 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
       vkb::sg::Camera *light_camera{};
 
       vkb::sg::Camera *camera{};
+
+      std::vector<VkCommandBuffer> record_command_buffers();
+
+      void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
+
+      void draw_lighting_pass(vkb::CommandBuffer &command_buffer);
 };
 
 std::unique_ptr<vkb::VulkanSample> create_multithreading_render_passes();

@@ -126,6 +126,48 @@ std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_lighting
     return lighting_render_pipeline;
 }
 
+void MultithreadingRenderPasses::update(float delta_time)
+{
+    update_scene(delta_time);
+
+    update_stats(delta_time);
+
+    update_gui(delta_time);
+
+    auto acquired_semaphore = render_context->begin_frame();
+
+    if (acquired_semaphore == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("Couldn't begin frame");
+    }
+
+    vkb::RenderFrame &frame = render_context->get_active_frame();
+
+    VkPipelineStageFlags wait_pipeline_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSemaphore render_semaphore = frame.request_semaphore();
+
+    auto command_buffers = record_command_buffers();
+
+    VkSubmitInfo submit_info{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+
+    submit_info.commandBufferCount = command_buffers.size();
+    submit_info.pCommandBuffers = command_buffers.data();
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = &acquired_semaphore;
+    submit_info.pWaitDstStageMask = &wait_pipeline_stage;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = &render_semaphore;
+
+    VkFence fence = frame.request_fence();
+
+    const auto &queue = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
+
+    queue.submit({ submit_info }, fence);
+
+    render_context->end_frame(render_semaphore);
+}
+
 void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D &extent)
 {
     VkViewport viewport{};
@@ -140,14 +182,44 @@ void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent
     command_buffer.set_scissor(0, { scissor });
 }
 
-void MultithreadingRenderPasses::draw_renderpass(vkb::CommandBuffer &command_buffer, vkb::RenderTarget &render_target)
+std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers()
 {
-    auto &extent = render_target.get_extent();
+    auto reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
+    const auto &queue = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
+
+    // Recording shadow command buffer
+    auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
+    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    draw_shadow_pass(shadow_command_buffer);
+    shadow_command_buffer.end();
+
+    // Recording lighting command buffer
+    auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
+    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    draw_lighting_pass(main_command_buffer);
+    main_command_buffer.end();
+
+    std::vector<VkCommandBuffer> command_buffers;
+    command_buffers.push_back(main_command_buffer.get_handle());
+    command_buffers.push_back(shadow_command_buffer.get_handle());
+
+    return command_buffers;
+}
+
+void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_buffer)
+{
     auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
     auto &shadowmap_extent = shadow_render_target.get_extent();
-   
+
     set_viewport_and_scissor(command_buffer, shadowmap_extent);
     shadow_render_pipeline->draw(command_buffer, shadow_render_target);
+    command_buffer.end_render_pass();
+}
+
+void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_buffer)
+{
+    auto &render_target = render_context->get_active_frame().get_render_target();
+    auto &extent = render_target.get_extent();
 
     set_viewport_and_scissor(command_buffer, extent);
     lighting_render_pipeline->draw(command_buffer, render_target);
