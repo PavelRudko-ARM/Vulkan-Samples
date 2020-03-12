@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <ctpl_stl.h>
+
 #include "rendering/render_pipeline.h"
 #include "scene_graph/components/camera.h"
 #include "rendering/subpasses/forward_subpass.h"
@@ -32,11 +34,13 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
   public:
 	MultithreadingRenderPasses();
 
+    virtual ~MultithreadingRenderPasses() = default;
+
 	virtual bool prepare(vkb::Platform &platform) override;
 
     virtual void update(float delta_time) override;
 
-	virtual ~MultithreadingRenderPasses() = default;
+    void draw_gui() override;
 
     /**
      * @brief This subpass is responsible for rendering a shadowmap
@@ -81,6 +85,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
     };
 
   private:
+      virtual void prepare_render_context() override;
+
       std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
 
       /**
@@ -104,6 +110,14 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
       vkb::sg::Camera *light_camera{};
 
       vkb::sg::Camera *camera{};
+
+      ctpl::thread_pool thread_pool;
+
+      bool gui_use_separate_command_buffers{false};
+
+      bool gui_use_multithreading{ false };
+
+      bool last_gui_use_separate_command_buffers{false};
 
       std::vector<VkCommandBuffer> record_command_buffers();
 

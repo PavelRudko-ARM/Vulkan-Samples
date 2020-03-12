@@ -30,6 +30,16 @@
 
 MultithreadingRenderPasses::MultithreadingRenderPasses()
 {
+    auto &config = get_configuration();
+
+    config.insert<vkb::BoolSetting>(0, gui_use_separate_command_buffers, false);
+    config.insert<vkb::BoolSetting>(0, gui_use_multithreading, false);
+
+    config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
+    config.insert<vkb::BoolSetting>(1, gui_use_multithreading, false);
+
+    config.insert<vkb::BoolSetting>(2, gui_use_separate_command_buffers, true);
+    config.insert<vkb::BoolSetting>(2, gui_use_multithreading, true);
 }
 
 bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
@@ -79,6 +89,11 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	gui   = std::make_unique<vkb::Gui>(*this, platform.get_window().get_dpi_factor());
 
 	return true;
+}
+
+void MultithreadingRenderPasses::prepare_render_context()
+{
+    get_render_context().prepare(2);
 }
 
 std::unique_ptr<vkb::RenderTarget> MultithreadingRenderPasses::create_shadow_render_target(uint32_t size)
@@ -168,13 +183,26 @@ void MultithreadingRenderPasses::update(float delta_time)
     render_context->end_frame(render_semaphore);
 }
 
+void MultithreadingRenderPasses::draw_gui()
+{
+    gui->show_options_window([this]() {
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
+        ImGui::Checkbox("Use separate command buffers", &gui_use_separate_command_buffers);
+        if (gui_use_separate_command_buffers)
+        {
+            ImGui::Checkbox("Multithreading", &gui_use_multithreading);
+        }
+    });
+}
+
 void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D &extent)
 {
     VkViewport viewport{};
     viewport.width = static_cast<float>(extent.width);
     viewport.height = static_cast<float>(extent.height);
     viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    viewport.maxDepth = 1.0f ;
     command_buffer.set_viewport(0, { viewport });
 
     VkRect2D scissor{};
@@ -187,22 +215,83 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
     auto reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
     const auto &queue = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
-    // Recording shadow command buffer
-    auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
-    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    draw_shadow_pass(shadow_command_buffer);
-    shadow_command_buffer.end();
-
-    // Recording lighting command buffer
-    auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
-    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    draw_lighting_pass(main_command_buffer);
-    main_command_buffer.end();
-
     std::vector<VkCommandBuffer> command_buffers;
-    command_buffers.push_back(main_command_buffer.get_handle());
-    command_buffers.push_back(shadow_command_buffer.get_handle());
 
+    if (gui_use_separate_command_buffers)
+    {
+        if (gui_use_multithreading)
+        {
+            if (thread_pool.size() < 2) 
+            {
+                thread_pool.resize(2);
+            }
+
+            std::vector<std::future<void>> cmd_buf_futures;
+
+            auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue, 
+                reset_mode, 
+                VK_COMMAND_BUFFER_LEVEL_PRIMARY, 
+                0);
+
+            auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, 
+                reset_mode,
+                VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                1);
+
+            auto fut = thread_pool.push(
+                [this, &shadow_command_buffer](size_t thread_id) {
+                    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+                    draw_shadow_pass(shadow_command_buffer);
+                    shadow_command_buffer.end();
+            });
+            cmd_buf_futures.push_back(std::move(fut));
+
+            fut = thread_pool.push(
+                [this, &main_command_buffer](size_t thread_id) {
+                    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+                    draw_lighting_pass(main_command_buffer);
+                    main_command_buffer.end();
+            });
+            cmd_buf_futures.push_back(std::move(fut));
+
+            command_buffers.push_back(shadow_command_buffer.get_handle());
+            command_buffers.push_back(main_command_buffer.get_handle());
+
+            for (auto &fut : cmd_buf_futures)
+            {
+                fut.get();
+            }
+        }
+        else
+        {
+            // Recording shadow command buffer
+            auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
+            shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+            draw_shadow_pass(shadow_command_buffer);
+            shadow_command_buffer.end();
+
+            // Recording lighting command buffer
+            auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
+            main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+            draw_lighting_pass(main_command_buffer);
+            main_command_buffer.end();
+
+            command_buffers.push_back(shadow_command_buffer.get_handle());
+            command_buffers.push_back(main_command_buffer.get_handle());
+        }  
+    }
+    else
+    {
+        // Recording both renderpasses into single command buffer
+        auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
+        main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        draw_shadow_pass(main_command_buffer);
+        draw_lighting_pass(main_command_buffer);
+        main_command_buffer.end();
+
+        command_buffers.push_back(main_command_buffer.get_handle());
+    }
+    
     return command_buffers;
 }
 
