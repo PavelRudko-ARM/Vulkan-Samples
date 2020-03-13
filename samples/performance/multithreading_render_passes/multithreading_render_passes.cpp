@@ -59,7 +59,7 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	load_scene("scenes/bonza/Bonza.gltf");
 
 	scene->clear_components<vkb::sg::Light>();
-	auto &light           = vkb::add_directional_light(*scene, glm::quat({glm::radians(-75.0f), glm::radians(-45.0f), glm::radians(0.0f)}));
+	auto &light           = vkb::add_directional_light(*scene, glm::quat({glm::radians(-75.0f), glm::radians(45.0f), glm::radians(0.0f)}));
 	auto &light_transform = light.get_node()->get_transform();
 	light_transform.set_translation(light_transform.get_rotation() * glm::vec3(0, 0, 1));
 
@@ -310,19 +310,49 @@ void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_bu
 
 void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_buffer)
 {
-	auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views()[0];
+	auto& views = render_context->get_active_frame().get_render_target().get_views();
+
+	auto swapchain_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	{
+		vkb::ImageMemoryBarrier memory_barrier{};
+		memory_barrier.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		memory_barrier.new_layout = swapchain_layout;
+		memory_barrier.src_access_mask = 0;
+		memory_barrier.dst_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	    memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+	    command_buffer.image_memory_barrier(views.at(swapchain_attachment_index), memory_barrier);
+	}
+
+	{
+		vkb::ImageMemoryBarrier memory_barrier{};
+		memory_barrier.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		memory_barrier.new_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		memory_barrier.src_access_mask = 0;
+		memory_barrier.dst_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+		command_buffer.image_memory_barrier(views.at(depth_attachment_index), memory_barrier);
+	}
+
+	{
+		auto& shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views().at(shadowmap_attachment_index);
+
+		vkb::ImageMemoryBarrier memory_barrier{};
+		memory_barrier.old_layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		memory_barrier.new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		memory_barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		memory_barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
+		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+		command_buffer.image_memory_barrier(shadowmap, memory_barrier);
+	}
+
 	auto &render_target = render_context->get_active_frame().get_render_target();
 	auto &extent        = render_target.get_extent();
-
-	vkb::ImageMemoryBarrier memory_barrier{};
-	memory_barrier.old_layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-	memory_barrier.new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	memory_barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	memory_barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
-	memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-	command_buffer.image_memory_barrier(shadowmap, memory_barrier);
 
 	set_viewport_and_scissor(command_buffer, extent);
 	lighting_render_pipeline->draw(command_buffer, render_target);
@@ -371,7 +401,7 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::draw(vkb::CommandBuffer &
 	shadow_uniform.light_matrix = vkb::vulkan_style_projection(light_camera.get_projection()) * light_camera.get_view();
 
 	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
-	command_buffer.bind_image(shadow_render_target.get_views()[0], *shadowmap_sampler, 0, 5, 0);
+	command_buffer.bind_image(shadow_render_target.get_views().at(0), *shadowmap_sampler, 0, 5, 0);
 
 	auto &                render_frame  = get_render_context().get_active_frame();
 	vkb::BufferAllocation shadow_buffer = render_frame.allocate_buffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(glm::mat4));
@@ -412,17 +442,6 @@ void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer& command
 
 		draw_submesh(command_buffer, *node_it->second.second, front_face);
 	}
-
-	vkb::ColorBlendAttachmentState color_blend_attachment{};
-	color_blend_attachment.blend_enable = VK_TRUE;
-	color_blend_attachment.src_color_blend_factor = VK_BLEND_FACTOR_SRC_ALPHA;
-	color_blend_attachment.dst_color_blend_factor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	color_blend_attachment.src_alpha_blend_factor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-
-	vkb::ColorBlendState color_blend_state{};
-	color_blend_state.attachments.resize(get_output_attachments().size());
-	color_blend_state.attachments[0] = color_blend_attachment;
-	command_buffer.set_color_blend_state(color_blend_state);
 
 	command_buffer.set_depth_stencil_state(get_depth_stencil_state());
 
@@ -497,7 +516,6 @@ void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer 
 
 	command_buffer.set_vertex_input_state(vertex_input_state);
 
-	// Find submesh vertex buffers matching the shader input attribute names
 	for (auto &input_resource : vertex_input_resources)
 	{
 		const auto &buffer_iter = sub_mesh.vertex_buffers.find(input_resource.name);
@@ -507,7 +525,6 @@ void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer 
 			std::vector<std::reference_wrapper<const vkb::core::Buffer>> buffers;
 			buffers.emplace_back(std::ref(buffer_iter->second));
 
-			// Bind vertex buffers only for the attribute locations defined
 			command_buffer.bind_vertex_buffers(input_resource.location, std::move(buffers), {0});
 		}
 	}

@@ -122,6 +122,12 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
       ctpl::thread_pool thread_pool;
 
+      uint32_t swapchain_attachment_index{0};
+
+      uint32_t depth_attachment_index{1};
+
+      uint32_t shadowmap_attachment_index{0};
+
       bool gui_use_separate_command_buffers{false};
 
       bool gui_use_multithreading{ false };
