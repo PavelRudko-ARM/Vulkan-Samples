@@ -54,7 +54,14 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
             vkb::sg::Scene &scene,
             vkb::sg::Camera &camera);
 
+        void set_thread_index(uint32_t index);
+
+        virtual void draw(vkb::CommandBuffer &command_buffer) override;
+
         virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
+
+    private:
+        uint32_t thread_index{0};
     };
 
     /**
@@ -106,6 +113,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
       /// 2. Pipeline which uses shadowmap
       std::unique_ptr<vkb::RenderPipeline> lighting_render_pipeline{};
+
+      ShadowSubpass* shadow_subpass{};
 
       vkb::sg::Camera *light_camera{};
 
