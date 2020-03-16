@@ -310,43 +310,43 @@ void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_bu
 
 void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_buffer)
 {
-	auto& views = render_context->get_active_frame().get_render_target().get_views();
+	auto &views = render_context->get_active_frame().get_render_target().get_views();
 
 	auto swapchain_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	{
 		vkb::ImageMemoryBarrier memory_barrier{};
-		memory_barrier.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-		memory_barrier.new_layout = swapchain_layout;
+		memory_barrier.old_layout      = VK_IMAGE_LAYOUT_UNDEFINED;
+		memory_barrier.new_layout      = swapchain_layout;
 		memory_barrier.src_access_mask = 0;
 		memory_barrier.dst_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	    memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-	    command_buffer.image_memory_barrier(views.at(swapchain_attachment_index), memory_barrier);
+		command_buffer.image_memory_barrier(views.at(swapchain_attachment_index), memory_barrier);
 	}
 
 	{
 		vkb::ImageMemoryBarrier memory_barrier{};
-		memory_barrier.old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-		memory_barrier.new_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		memory_barrier.old_layout      = VK_IMAGE_LAYOUT_UNDEFINED;
+		memory_barrier.new_layout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		memory_barrier.src_access_mask = 0;
 		memory_barrier.dst_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
 		command_buffer.image_memory_barrier(views.at(depth_attachment_index), memory_barrier);
 	}
 
 	{
-		auto& shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views().at(shadowmap_attachment_index);
+		auto &shadowmap = shadow_render_targets[render_context->get_active_frame_index()]->get_views().at(shadowmap_attachment_index);
 
 		vkb::ImageMemoryBarrier memory_barrier{};
-		memory_barrier.old_layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-		memory_barrier.new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		memory_barrier.old_layout      = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+		memory_barrier.new_layout      = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		memory_barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		memory_barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
-		memory_barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		memory_barrier.dst_stage_mask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 		command_buffer.image_memory_barrier(shadowmap, memory_barrier);
 	}
@@ -365,12 +365,12 @@ void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_
 	command_buffer.end_render_pass();
 }
 
-MultithreadingRenderPasses::ForwardShadowSubpass::ForwardShadowSubpass(vkb::RenderContext &render_context,
-                                                                       vkb::ShaderSource &&vertex_source,
-                                                                       vkb::ShaderSource &&fragment_source,
-                                                                       vkb::sg::Scene &scene,
-                                                                       vkb::sg::Camera &camera,
-                                                                       vkb::sg::Camera &light_camera,
+MultithreadingRenderPasses::ForwardShadowSubpass::ForwardShadowSubpass(vkb::RenderContext &                             render_context,
+                                                                       vkb::ShaderSource &&                             vertex_source,
+                                                                       vkb::ShaderSource &&                             fragment_source,
+                                                                       vkb::sg::Scene &                                 scene,
+                                                                       vkb::sg::Camera &                                camera,
+                                                                       vkb::sg::Camera &                                light_camera,
                                                                        std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets) :
     light_camera{light_camera},
     shadow_render_targets{shadow_render_targets},
@@ -414,8 +414,8 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::draw(vkb::CommandBuffer &
 MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &render_context,
                                                          vkb::ShaderSource &&vertex_source,
                                                          vkb::ShaderSource &&fragment_source,
-                                                         vkb::sg::Scene &scene,
-                                                         vkb::sg::Camera &camera) :
+                                                         vkb::sg::Scene &    scene,
+                                                         vkb::sg::Camera &   camera) :
     vkb::GeometrySubpass{render_context, std::move(vertex_source), std::move(fragment_source), scene, camera}
 {
 }
@@ -425,10 +425,10 @@ void MultithreadingRenderPasses::ShadowSubpass::set_thread_index(uint32_t index)
 	thread_index = index;
 }
 
-void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer& command_buffer)
+void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer &command_buffer)
 {
-	std::multimap<float, std::pair<vkb::sg::Node*, vkb::sg::SubMesh*>> opaque_nodes;
-	std::multimap<float, std::pair<vkb::sg::Node*, vkb::sg::SubMesh*>> transparent_nodes;
+	std::multimap<float, std::pair<vkb::sg::Node *, vkb::sg::SubMesh *>> opaque_nodes;
+	std::multimap<float, std::pair<vkb::sg::Node *, vkb::sg::SubMesh *>> transparent_nodes;
 
 	get_sorted_nodes(opaque_nodes, transparent_nodes);
 
@@ -436,8 +436,8 @@ void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer& command
 	{
 		update_uniform(command_buffer, *node_it->second.first, thread_index);
 
-		const auto& scale = node_it->second.first->get_transform().get_scale();
-		bool        flipped = scale.x * scale.y * scale.z < 0;
+		const auto &scale      = node_it->second.first->get_transform().get_scale();
+		bool        flipped    = scale.x * scale.y * scale.z < 0;
 		VkFrontFace front_face = flipped ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
 		draw_submesh(command_buffer, *node_it->second.second, front_face);

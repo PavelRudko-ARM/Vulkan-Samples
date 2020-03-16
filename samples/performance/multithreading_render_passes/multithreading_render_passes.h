@@ -20,13 +20,13 @@
 #include <ctpl_stl.h>
 
 #include "rendering/render_pipeline.h"
-#include "scene_graph/components/camera.h"
 #include "rendering/subpasses/forward_subpass.h"
+#include "scene_graph/components/camera.h"
 #include "vulkan_sample.h"
 
 struct alignas(16) ShadowUniform
 {
-    glm::mat4 light_matrix;         // Projection matrix used to render shadowmap
+	glm::mat4 light_matrix;        // Projection matrix used to render shadowmap
 };
 
 class MultithreadingRenderPasses : public vkb::VulkanSample
@@ -34,111 +34,111 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
   public:
 	MultithreadingRenderPasses();
 
-    virtual ~MultithreadingRenderPasses() = default;
+	virtual ~MultithreadingRenderPasses() = default;
 
 	virtual bool prepare(vkb::Platform &platform) override;
 
-    virtual void update(float delta_time) override;
+	virtual void update(float delta_time) override;
 
-    void draw_gui() override;
+	void draw_gui() override;
 
-    /**
+	/**
      * @brief This subpass is responsible for rendering a shadowmap
      */
-    class ShadowSubpass : public vkb::GeometrySubpass
-    {
-    public:
-        ShadowSubpass(vkb::RenderContext &render_context,
-            vkb::ShaderSource &&vertex_source,
-            vkb::ShaderSource &&fragment_source,
-            vkb::sg::Scene &scene,
-            vkb::sg::Camera &camera);
+	class ShadowSubpass : public vkb::GeometrySubpass
+	{
+	  public:
+		ShadowSubpass(vkb::RenderContext &render_context,
+		              vkb::ShaderSource &&vertex_source,
+		              vkb::ShaderSource &&fragment_source,
+		              vkb::sg::Scene &    scene,
+		              vkb::sg::Camera &   camera);
 
-        void set_thread_index(uint32_t index);
+		void set_thread_index(uint32_t index);
 
-        virtual void draw(vkb::CommandBuffer &command_buffer) override;
+		virtual void draw(vkb::CommandBuffer &command_buffer) override;
 
-        virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
+		virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
 
-    private:
-        uint32_t thread_index{0};
-    };
+	  private:
+		uint32_t thread_index{0};
+	};
 
-    /**
+	/**
      * @brief This subpass is responsible for rendering a Scene
      *		  It implements a custom draw function which passes shadowmap and light matrix
      */
-    class ForwardShadowSubpass : public vkb::ForwardSubpass
-    {
-    public:
-        ForwardShadowSubpass(vkb::RenderContext &render_context,
-            vkb::ShaderSource &&vertex_source, 
-            vkb::ShaderSource &&fragment_source,
-            vkb::sg::Scene &scene, 
-            vkb::sg::Camera &camera,
-            vkb::sg::Camera &light_camera,
-            std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets);
+	class ForwardShadowSubpass : public vkb::ForwardSubpass
+	{
+	  public:
+		ForwardShadowSubpass(vkb::RenderContext &                             render_context,
+		                     vkb::ShaderSource &&                             vertex_source,
+		                     vkb::ShaderSource &&                             fragment_source,
+		                     vkb::sg::Scene &                                 scene,
+		                     vkb::sg::Camera &                                camera,
+		                     vkb::sg::Camera &                                light_camera,
+		                     std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets);
 
-        virtual void prepare() override;
+		virtual void prepare() override;
 
-        virtual void draw(vkb::CommandBuffer &command_buffer) override;
+		virtual void draw(vkb::CommandBuffer &command_buffer) override;
 
-    private:
-        std::unique_ptr<vkb::core::Sampler> shadowmap_sampler{};
+	  private:
+		std::unique_ptr<vkb::core::Sampler> shadowmap_sampler{};
 
-        vkb::sg::Camera &light_camera;
+		vkb::sg::Camera &light_camera;
 
-        std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets;
-    };
+		std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets;
+	};
 
   private:
-      virtual void prepare_render_context() override;
+	virtual void prepare_render_context() override;
 
-      std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
+	std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
 
-      /**
+	/**
        * @return A shadow render pass which should run first
        */
-      std::unique_ptr<vkb::RenderPipeline> create_shadow_renderpass();
+	std::unique_ptr<vkb::RenderPipeline> create_shadow_renderpass();
 
-      /**
+	/**
        * @return A lighting render pass which should run second
        */
-      std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
+	std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
 
-      std::vector<std::unique_ptr<vkb::RenderTarget>> shadow_render_targets;
+	std::vector<std::unique_ptr<vkb::RenderTarget>> shadow_render_targets;
 
-      /// 1. Pipeline for shadowmap rendering
-      std::unique_ptr<vkb::RenderPipeline> shadow_render_pipeline{};
+	/// 1. Pipeline for shadowmap rendering
+	std::unique_ptr<vkb::RenderPipeline> shadow_render_pipeline{};
 
-      /// 2. Pipeline which uses shadowmap
-      std::unique_ptr<vkb::RenderPipeline> lighting_render_pipeline{};
+	/// 2. Pipeline which uses shadowmap
+	std::unique_ptr<vkb::RenderPipeline> lighting_render_pipeline{};
 
-      ShadowSubpass* shadow_subpass{};
+	ShadowSubpass *shadow_subpass{};
 
-      vkb::sg::Camera *light_camera{};
+	vkb::sg::Camera *light_camera{};
 
-      vkb::sg::Camera *camera{};
+	vkb::sg::Camera *camera{};
 
-      ctpl::thread_pool thread_pool;
+	ctpl::thread_pool thread_pool;
 
-      uint32_t swapchain_attachment_index{0};
+	uint32_t swapchain_attachment_index{0};
 
-      uint32_t depth_attachment_index{1};
+	uint32_t depth_attachment_index{1};
 
-      uint32_t shadowmap_attachment_index{0};
+	uint32_t shadowmap_attachment_index{0};
 
-      bool gui_use_separate_command_buffers{false};
+	bool gui_use_separate_command_buffers{false};
 
-      bool gui_use_multithreading{ false };
+	bool gui_use_multithreading{false};
 
-      bool last_gui_use_separate_command_buffers{false};
+	bool last_gui_use_separate_command_buffers{false};
 
-      std::vector<VkCommandBuffer> record_command_buffers();
+	std::vector<VkCommandBuffer> record_command_buffers();
 
-      void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
+	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
 
-      void draw_lighting_pass(vkb::CommandBuffer &command_buffer);
+	void draw_lighting_pass(vkb::CommandBuffer &command_buffer);
 };
 
 std::unique_ptr<vkb::VulkanSample> create_multithreading_render_passes();

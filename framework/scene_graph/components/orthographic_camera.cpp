@@ -25,74 +25,74 @@ namespace vkb
 {
 namespace sg
 {
-OrthographicCamera::OrthographicCamera(const std::string& name) :
+OrthographicCamera::OrthographicCamera(const std::string &name) :
     Camera{name}
 {}
 
 void OrthographicCamera::set_left(float new_left)
 {
-    left = new_left;
+	left = new_left;
 }
 
 float OrthographicCamera::get_left() const
 {
-    return left;
+	return left;
 }
 
 void OrthographicCamera::set_right(float new_right)
 {
-    right = new_right;
+	right = new_right;
 }
 
 float OrthographicCamera::get_right() const
 {
-    return right;
+	return right;
 }
 
 void OrthographicCamera::set_bottom(float new_bottom)
 {
-    bottom = new_bottom;
+	bottom = new_bottom;
 }
 
 float OrthographicCamera::get_bottom() const
 {
-    return bottom;
+	return bottom;
 }
 
 void OrthographicCamera::set_top(float new_top)
 {
-    top = new_top;
+	top = new_top;
 }
 
 float OrthographicCamera::get_top() const
 {
-    return top;
+	return top;
 }
 
 void OrthographicCamera::set_near_plane(float new_near_plane)
 {
-    near_plane = new_near_plane;
+	near_plane = new_near_plane;
 }
 
 float OrthographicCamera::get_near_plane() const
 {
-    return near_plane;
+	return near_plane;
 }
 
 void OrthographicCamera::set_far_plane(float new_far_plane)
 {
-    far_plane = new_far_plane;
+	far_plane = new_far_plane;
 }
 
 float OrthographicCamera::get_far_plane() const
 {
-    return far_plane;
+	return far_plane;
 }
 
 glm::mat4 OrthographicCamera::get_projection()
 {
-    // Note: Using Revsered depth-buffer for increased precision, so Znear and Zfar are flipped
-    return glm::ortho(left, right, bottom, top, far_plane, near_plane);
+	// Note: Using Revsered depth-buffer for increased precision, so Znear and Zfar are flipped
+	return glm::ortho(left, right, bottom, top, far_plane, near_plane);
 }
 }        // namespace sg
 }        // namespace vkb
