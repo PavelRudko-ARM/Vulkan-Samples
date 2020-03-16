@@ -29,6 +29,11 @@ struct alignas(16) ShadowUniform
 	glm::mat4 light_matrix;        // Projection matrix used to render shadowmap
 };
 
+/**
+ * @brief Multithreading with Render Passes
+ * This sample shows perfomance improvement when using multithreading with 
+ * multiple render passes and primary level command buffers.
+ */
 class MultithreadingRenderPasses : public vkb::VulkanSample
 {
   public:
@@ -54,6 +59,9 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 		              vkb::sg::Scene &    scene,
 		              vkb::sg::Camera &   camera);
 
+		/**
+     * @brief Thread index to use for allocating resources
+     */
 		void set_thread_index(uint32_t index);
 
 		virtual void draw(vkb::CommandBuffer &command_buffer) override;
@@ -97,27 +105,40 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
 
 	/**
-       * @return A shadow render pass which should run first
-       */
+     * @return A shadow render pass which should run first
+     */
 	std::unique_ptr<vkb::RenderPipeline> create_shadow_renderpass();
 
 	/**
-       * @return A lighting render pass which should run second
-       */
+     * @return A lighting render pass which should run second
+     */
 	std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
 
 	std::vector<std::unique_ptr<vkb::RenderTarget>> shadow_render_targets;
 
-	/// 1. Pipeline for shadowmap rendering
+	/**
+	 * @brief Pipeline for shadowmap rendering
+	 */
 	std::unique_ptr<vkb::RenderPipeline> shadow_render_pipeline{};
 
-	/// 2. Pipeline which uses shadowmap
+	/**
+	 * @brief Pipeline which uses shadowmap 
+	 */
 	std::unique_ptr<vkb::RenderPipeline> lighting_render_pipeline{};
 
+	/**
+	 * @brief Subpass for shadowmap rendering  
+	 */
 	ShadowSubpass *shadow_subpass{};
 
+	/**
+	 * @brief Camera for shadowmap rendering (view from the light source)
+	 */
 	vkb::sg::Camera *light_camera{};
 
+	/**
+	 * @brief Main camera for scene rendering
+	 */
 	vkb::sg::Camera *camera{};
 
 	ctpl::thread_pool thread_pool;
@@ -132,8 +153,10 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	bool gui_use_multithreading{false};
 
-	bool last_gui_use_separate_command_buffers{false};
-
+	/**
+	 * @brief Record drawing commands using the chosen strategy
+     * @return Single or multiple recorded command buffers
+	 */
 	std::vector<VkCommandBuffer> record_command_buffers();
 
 	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);

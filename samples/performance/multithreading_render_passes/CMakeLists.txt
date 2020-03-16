@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, Arm Limited and Contributors
+# Copyright (c) 2020, Arm Limited and Contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -22,6 +22,6 @@ get_filename_component(CATEGORY_NAME ${PARENT_DIR} NAME)
 add_sample(
     ID ${FOLDER_NAME}
     CATEGORY ${CATEGORY_NAME}
-    AUTHOR "Khronos"
-    NAME "multithreading_render_passes"
-    DESCRIPTION "Sample description")
+    AUTHOR "Arm"
+    NAME "Multithreading with Render Passes"
+    DESCRIPTION "Multithreading with multiple render passes.")

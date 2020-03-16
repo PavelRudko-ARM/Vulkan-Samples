@@ -241,6 +241,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 			                                                                                      VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			                                                                                      0);
 
+			// Recording shadow command buffer
 			auto fut = thread_pool.push(
 			    [this, &shadow_command_buffer](size_t thread_id) {
 				    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -249,6 +250,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 			    });
 			cmd_buf_futures.push_back(std::move(fut));
 
+			// Recording lighting command buffer
 			fut = thread_pool.push(
 			    [this, &main_command_buffer](size_t thread_id) {
 				    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -385,6 +387,7 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
 	dynamic_resources = {"GlobalUniform", "ShadowUniform"};
 
 	// Create a sampler for sampling the shadowmap during the lighting process
+	// Address mode and border color are used to put everything outside of the light camera frustum into shadow
 	VkSamplerCreateInfo shadowmap_sampler_create_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 	shadowmap_sampler_create_info.minFilter    = VK_FILTER_LINEAR;
 	shadowmap_sampler_create_info.magFilter    = VK_FILTER_LINEAR;
@@ -466,6 +469,7 @@ void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer 
 		rasterization_state.cull_mode = VK_CULL_MODE_NONE;
 	}
 
+	//Enabling depth bias to get rid of self-shadowing artifacts
 	command_buffer.set_rasterization_state(rasterization_state);
 	command_buffer.set_depth_bias(-1.4f, 0.0f, -1.7f);
 
