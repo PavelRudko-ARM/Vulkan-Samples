@@ -1,5 +1,5 @@
 #version 320 es
-/* Copyright (c) 2019-2020, Arm Limited and Contributors
+/* Copyright (c) 2020, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -18,8 +18,6 @@
 
 precision highp float;
 precision highp sampler2DShadow;
-
-#define PCF_RADIUS 1
 
 #ifdef HAS_BASE_COLOR_TEXTURE
 layout(set = 0, binding = 0) uniform sampler2D base_color_texture;

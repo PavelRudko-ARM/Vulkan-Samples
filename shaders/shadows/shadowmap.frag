@@ -1,5 +1,5 @@
 #version 320 es
-/* Copyright (c) 2019-2020, Arm Limited and Contributors
+/* Copyright (c) 2020, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
- precision highp float;
+precision highp float;
 
 void main(void)
 {

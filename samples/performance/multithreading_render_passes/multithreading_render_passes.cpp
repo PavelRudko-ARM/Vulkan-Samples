@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2020, Arm Limited and Contributors
+/* Copyright (c) 2020, Arm Limited and Contributors
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -131,8 +131,8 @@ std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_shadow_r
 std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_lighting_renderpass()
 {
 	// Lighting subpass
-	auto lighting_vs   = vkb::ShaderSource{"shadows/lighting.vert"};
-	auto lighting_fs   = vkb::ShaderSource{"shadows/lighting.frag"};
+	auto lighting_vs   = vkb::ShaderSource{"shadows/main.vert"};
+	auto lighting_fs   = vkb::ShaderSource{"shadows/main.frag"};
 	auto scene_subpass = std::make_unique<ForwardShadowSubpass>(get_render_context(), std::move(lighting_vs), std::move(lighting_fs), *scene, *camera, *light_camera, shadow_render_targets);
 
 	// Lighting pipeline
@@ -218,7 +218,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 
 	std::vector<VkCommandBuffer> command_buffers;
 
-	//Request resources from pools for thread #1 in shadow pass is multithreading is used
+	//Resources are requested from pools for thread #1 in shadow pass if multithreading is used
 	shadow_subpass->set_thread_index(gui_use_multithreading ? 1 : 0);
 
 	if (gui_use_separate_command_buffers)
@@ -389,6 +389,8 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
 
 	// Create a sampler for sampling the shadowmap during the lighting process
 	// Address mode and border color are used to put everything outside of the light camera frustum into shadow
+	// Depth is closer to 1 for near objects and closer to 0 for distant objects
+	// If we sample outside the shadowmap range [0,0]-[1,1], sampler clamps to border and returns 1 (opaque white)
 	VkSamplerCreateInfo shadowmap_sampler_create_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
 	shadowmap_sampler_create_info.minFilter     = VK_FILTER_LINEAR;
 	shadowmap_sampler_create_info.magFilter     = VK_FILTER_LINEAR;
