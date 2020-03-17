@@ -98,42 +98,8 @@ vec3 apply_point_light(uint index, vec3 normal)
 	return ndotl * lights.light[index].color.w * atten * lights.light[index].color.rgb;
 }
 
-/*float calculate_shadow(vec2 offset)
+float calculate_shadow()
 {
-    vec4 projected_coord = shadow_uniform.light_matrix * vec4(in_pos.xyz, 1.0);
-
-    projected_coord /= projected_coord.w;
-
-    projected_coord.xy = 0.5 * projected_coord.xy + 0.5;
-
-    float closest_depth = texture(shadowmap_texture, projected_coord.xy + offset).r;
-
-    return projected_coord.z < closest_depth ? 0.0 : 1.0;
-}*/
-
-float calculate_shadow_pcf()
-{
-    /*ivec2 size = textureSize(shadowmap_texture, 0).xy;
-
-    float scale = 1.5;
-
-    float dx = scale * 1.0 / float(size.x);
-
-    float dy = scale * 1.0 / float(size.y);
-
-    float sum = 0.0;
-
-    float count = 0.0;
-
-    for(int x = -PCF_RADIUS; x <= PCF_RADIUS; x++) {
-        for(int y = -PCF_RADIUS; y <= PCF_RADIUS; y++) {
-            sum += calculate_shadow(vec2(float(x) * dx, float(y) * dy));
-            count += 1.0f;
-        }
-    }
-
-    return sum / count;*/
-
     vec4 projected_coord = shadow_uniform.light_matrix * vec4(in_pos.xyz, 1.0);
 
     projected_coord /= projected_coord.w;
@@ -161,7 +127,7 @@ void main(void)
 		}
         if(i == 0U) 
         {
-            light_contribution *= calculate_shadow_pcf();
+            light_contribution *= calculate_shadow();
         }
 	}
 

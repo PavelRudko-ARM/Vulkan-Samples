@@ -56,21 +56,21 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	}
 
 	// Load a scene from the assets folder
-	load_scene("scenes/bonza/Bonza.gltf");
+	load_scene("scenes/bonza/Bonza4X.gltf");
 
 	scene->clear_components<vkb::sg::Light>();
 	auto &light           = vkb::add_directional_light(*scene, glm::quat({glm::radians(-30.0f), glm::radians(175.0f), glm::radians(0.0f)}));
 	auto &light_transform = light.get_node()->get_transform();
-	light_transform.set_translation(light_transform.get_rotation() * glm::vec3(0, 0, 1) + glm::vec3(-500, 0, 0));
+	light_transform.set_translation(light_transform.get_rotation() * glm::vec3(0, 0, 1) + glm::vec3(-50, 0, 0));
 
 	// Attach a camera component to the light node
 	auto light_camera_ptr = std::make_unique<vkb::sg::OrthographicCamera>("light_camera");
-	light_camera_ptr->set_left(-1000.0f);
-	light_camera_ptr->set_right(1000.0f);
-	light_camera_ptr->set_bottom(-1000.0f);
-	light_camera_ptr->set_top(1000.0f);
-	light_camera_ptr->set_near_plane(-1200.0f);
-	light_camera_ptr->set_far_plane(3000.0f);
+	light_camera_ptr->set_left(-100.0f);
+	light_camera_ptr->set_right(100.0f);
+	light_camera_ptr->set_bottom(-100.0f);
+	light_camera_ptr->set_top(100.0f);
+	light_camera_ptr->set_near_plane(-139.0f);
+	light_camera_ptr->set_far_plane(120.0f);
 	light_camera_ptr->set_node(*light.get_node());
 	light_camera = light_camera_ptr.get();
 	light.get_node()->set_component(*light_camera_ptr);
@@ -397,7 +397,7 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
 	shadowmap_sampler_create_info.addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
 	shadowmap_sampler_create_info.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	shadowmap_sampler_create_info.compareEnable = VK_TRUE;
-	shadowmap_sampler_create_info.compareOp     = VK_COMPARE_OP_GREATER;
+	shadowmap_sampler_create_info.compareOp     = VK_COMPARE_OP_GREATER_OR_EQUAL;
 	shadowmap_sampler                           = std::make_unique<vkb::core::Sampler>(get_render_context().get_device(), shadowmap_sampler_create_info);
 }
 
