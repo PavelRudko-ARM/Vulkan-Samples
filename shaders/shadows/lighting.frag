@@ -17,6 +17,7 @@
  */
 
 precision highp float;
+precision highp sampler2DShadow;
 
 #define PCF_RADIUS 1
 
@@ -53,7 +54,7 @@ layout(set = 0, binding = 4) uniform LightsInfo
 }
 lights;
 
-layout(set = 0, binding = 5) uniform sampler2D shadowmap_texture;
+layout(set = 0, binding = 5) uniform sampler2DShadow shadowmap_texture;
 
 layout(set = 0, binding = 6) uniform ShadowUniform
 {
@@ -97,7 +98,7 @@ vec3 apply_point_light(uint index, vec3 normal)
 	return ndotl * lights.light[index].color.w * atten * lights.light[index].color.rgb;
 }
 
-float calculate_shadow(vec2 offset)
+/*float calculate_shadow(vec2 offset)
 {
     vec4 projected_coord = shadow_uniform.light_matrix * vec4(in_pos.xyz, 1.0);
 
@@ -108,11 +109,11 @@ float calculate_shadow(vec2 offset)
     float closest_depth = texture(shadowmap_texture, projected_coord.xy + offset).r;
 
     return projected_coord.z < closest_depth ? 0.0 : 1.0;
-}
+}*/
 
 float calculate_shadow_pcf()
 {
-    ivec2 size = textureSize(shadowmap_texture, 0).xy;
+    /*ivec2 size = textureSize(shadowmap_texture, 0).xy;
 
     float scale = 1.5;
 
@@ -131,7 +132,15 @@ float calculate_shadow_pcf()
         }
     }
 
-    return sum / count;
+    return sum / count;*/
+
+    vec4 projected_coord = shadow_uniform.light_matrix * vec4(in_pos.xyz, 1.0);
+
+    projected_coord /= projected_coord.w;
+
+    projected_coord.xy = 0.5 * projected_coord.xy + 0.5;
+
+    return texture(shadowmap_texture, vec3(projected_coord.xy, projected_coord.z));
 }
 
 void main(void)

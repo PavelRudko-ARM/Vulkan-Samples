@@ -52,7 +52,7 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	shadow_render_targets.resize(get_render_context().get_render_frames().size());
 	for (uint32_t i = 0; i < shadow_render_targets.size(); i++)
 	{
-		shadow_render_targets[i] = create_shadow_render_target(1024);
+		shadow_render_targets[i] = create_shadow_render_target(SHADOWMAP_RESOLUTION);
 	}
 
 	// Load a scene from the assets folder
@@ -218,6 +218,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 
 	std::vector<VkCommandBuffer> command_buffers;
 
+	//Request resources from pools for thread #1 in shadow pass is multithreading is used
 	shadow_subpass->set_thread_index(gui_use_multithreading ? 1 : 0);
 
 	if (gui_use_separate_command_buffers)
@@ -345,9 +346,9 @@ void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_
 		vkb::ImageMemoryBarrier memory_barrier{};
 		memory_barrier.old_layout      = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 		memory_barrier.new_layout      = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		memory_barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		memory_barrier.src_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		memory_barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT;
-		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		memory_barrier.src_stage_mask  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 		memory_barrier.dst_stage_mask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 		command_buffer.image_memory_barrier(shadowmap, memory_barrier);
@@ -389,13 +390,15 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
 	// Create a sampler for sampling the shadowmap during the lighting process
 	// Address mode and border color are used to put everything outside of the light camera frustum into shadow
 	VkSamplerCreateInfo shadowmap_sampler_create_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-	shadowmap_sampler_create_info.minFilter    = VK_FILTER_LINEAR;
-	shadowmap_sampler_create_info.magFilter    = VK_FILTER_LINEAR;
-	shadowmap_sampler_create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	shadowmap_sampler_create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	shadowmap_sampler_create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	shadowmap_sampler_create_info.borderColor  = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	shadowmap_sampler                          = std::make_unique<vkb::core::Sampler>(get_render_context().get_device(), shadowmap_sampler_create_info);
+	shadowmap_sampler_create_info.minFilter     = VK_FILTER_LINEAR;
+	shadowmap_sampler_create_info.magFilter     = VK_FILTER_LINEAR;
+	shadowmap_sampler_create_info.addressModeU  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	shadowmap_sampler_create_info.addressModeV  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	shadowmap_sampler_create_info.addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	shadowmap_sampler_create_info.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	shadowmap_sampler_create_info.compareEnable = VK_TRUE;
+	shadowmap_sampler_create_info.compareOp     = VK_COMPARE_OP_GREATER;
+	shadowmap_sampler                           = std::make_unique<vkb::core::Sampler>(get_render_context().get_device(), shadowmap_sampler_create_info);
 }
 
 void MultithreadingRenderPasses::ForwardShadowSubpass::draw(vkb::CommandBuffer &command_buffer)
@@ -478,9 +481,8 @@ void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer 
 	command_buffer.set_multisample_state(multisample_state);
 
 	auto &vert_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_VERTEX_BIT, get_vertex_shader(), sub_mesh.get_shader_variant());
-	auto &frag_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_FRAGMENT_BIT, get_fragment_shader(), sub_mesh.get_shader_variant());
 
-	std::vector<vkb::ShaderModule *> shader_modules{&vert_shader_module, &frag_shader_module};
+	std::vector<vkb::ShaderModule *> shader_modules{&vert_shader_module};
 
 	vert_shader_module.set_resource_mode(vkb::ShaderResourceMode::Dynamic, "GlobalUniform");
 

@@ -114,6 +114,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
      */
 	std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
 
+	const uint32_t SHADOWMAP_RESOLUTION{1024};
+
 	std::vector<std::unique_ptr<vkb::RenderTarget>> shadow_render_targets;
 
 	/**
