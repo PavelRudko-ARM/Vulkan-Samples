@@ -64,24 +64,24 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	light_transform.set_translation(light_transform.get_rotation() * glm::vec3(0, 0, 1) + glm::vec3(-50, 0, 0));
 
 	// Attach a camera component to the light node
-	auto light_camera_ptr = std::make_unique<vkb::sg::OrthographicCamera>("light_camera");
-	light_camera_ptr->set_left(-100.0f);
-	light_camera_ptr->set_right(100.0f);
-	light_camera_ptr->set_bottom(-100.0f);
-	light_camera_ptr->set_top(100.0f);
-	light_camera_ptr->set_near_plane(-139.0f);
-	light_camera_ptr->set_far_plane(120.0f);
-	light_camera_ptr->set_node(*light.get_node());
-	light_camera = light_camera_ptr.get();
-	light.get_node()->set_component(*light_camera_ptr);
-	scene->add_component(std::move(light_camera_ptr));
+	auto shadowmap_camera_ptr = std::make_unique<vkb::sg::OrthographicCamera>("shadowmap_camera");
+	shadowmap_camera_ptr->set_left(-100.0f);
+	shadowmap_camera_ptr->set_right(100.0f);
+	shadowmap_camera_ptr->set_bottom(-100.0f);
+	shadowmap_camera_ptr->set_top(100.0f);
+	shadowmap_camera_ptr->set_near_plane(-139.0f);
+	shadowmap_camera_ptr->set_far_plane(120.0f);
+	shadowmap_camera_ptr->set_node(*light.get_node());
+	shadowmap_camera = shadowmap_camera_ptr.get();
+	light.get_node()->set_component(*shadowmap_camera_ptr);
+	scene->add_component(std::move(shadowmap_camera_ptr));
 
 	// Attach a move script to the camera component in the scene
 	auto &camera_node = vkb::add_free_camera(*scene, "main_camera", get_render_context().get_surface_extent());
 	camera            = &camera_node.get_component<vkb::sg::Camera>();
 
-	shadow_render_pipeline   = create_shadow_renderpass();
-	lighting_render_pipeline = create_lighting_renderpass();
+	shadow_render_pipeline = create_shadow_renderpass();
+	main_render_pipeline   = create_main_renderpass();
 
 	// Add a GUI with the stats you want to monitor
 	stats = std::make_unique<vkb::Stats>(std::set<vkb::StatIndex>{vkb::StatIndex::frame_times});
@@ -117,7 +117,7 @@ std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_shadow_r
 	// Shadowmap subpass
 	auto shadowmap_vs  = vkb::ShaderSource{"shadows/shadowmap.vert"};
 	auto shadowmap_fs  = vkb::ShaderSource{"shadows/shadowmap.frag"};
-	auto scene_subpass = std::make_unique<ShadowSubpass>(get_render_context(), std::move(shadowmap_vs), std::move(shadowmap_fs), *scene, *light_camera);
+	auto scene_subpass = std::make_unique<ShadowSubpass>(get_render_context(), std::move(shadowmap_vs), std::move(shadowmap_fs), *scene, *shadowmap_camera);
 
 	shadow_subpass = scene_subpass.get();
 
@@ -128,18 +128,18 @@ std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_shadow_r
 	return shadowmap_render_pipeline;
 }
 
-std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_lighting_renderpass()
+std::unique_ptr<vkb::RenderPipeline> MultithreadingRenderPasses::create_main_renderpass()
 {
-	// Lighting subpass
-	auto lighting_vs   = vkb::ShaderSource{"shadows/main.vert"};
-	auto lighting_fs   = vkb::ShaderSource{"shadows/main.frag"};
-	auto scene_subpass = std::make_unique<ForwardShadowSubpass>(get_render_context(), std::move(lighting_vs), std::move(lighting_fs), *scene, *camera, *light_camera, shadow_render_targets);
+	// Main subpass
+	auto main_vs       = vkb::ShaderSource{"shadows/main.vert"};
+	auto main_fs       = vkb::ShaderSource{"shadows/main.frag"};
+	auto scene_subpass = std::make_unique<MainSubpass>(get_render_context(), std::move(main_vs), std::move(main_fs), *scene, *camera, *shadowmap_camera, shadow_render_targets);
 
-	// Lighting pipeline
-	auto lighting_render_pipeline = std::make_unique<vkb::RenderPipeline>();
-	lighting_render_pipeline->add_subpass(std::move(scene_subpass));
+	// Main pipeline
+	auto main_render_pipeline = std::make_unique<vkb::RenderPipeline>();
+	main_render_pipeline->add_subpass(std::move(scene_subpass));
 
-	return lighting_render_pipeline;
+	return main_render_pipeline;
 }
 
 void MultithreadingRenderPasses::update(float delta_time)
@@ -255,7 +255,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 			fut = thread_pool.push(
 			    [this, &main_command_buffer](size_t thread_id) {
 				    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-				    draw_lighting_pass(main_command_buffer);
+				    draw_main_pass(main_command_buffer);
 				    main_command_buffer.end();
 			    });
 			cmd_buf_futures.push_back(std::move(fut));
@@ -279,7 +279,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 			// Recording lighting command buffer
 			auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
 			main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-			draw_lighting_pass(main_command_buffer);
+			draw_main_pass(main_command_buffer);
 			main_command_buffer.end();
 
 			command_buffers.push_back(shadow_command_buffer.get_handle());
@@ -292,7 +292,7 @@ std::vector<VkCommandBuffer> MultithreadingRenderPasses::record_command_buffers(
 		auto &main_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
 		main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		draw_shadow_pass(main_command_buffer);
-		draw_lighting_pass(main_command_buffer);
+		draw_main_pass(main_command_buffer);
 		main_command_buffer.end();
 
 		command_buffers.push_back(main_command_buffer.get_handle());
@@ -311,7 +311,7 @@ void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_bu
 	command_buffer.end_render_pass();
 }
 
-void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_buffer)
+void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buffer)
 {
 	auto &views = render_context->get_active_frame().get_render_target().get_views();
 
@@ -358,7 +358,7 @@ void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_
 	auto &extent        = render_target.get_extent();
 
 	set_viewport_and_scissor(command_buffer, extent);
-	lighting_render_pipeline->draw(command_buffer, render_target);
+	main_render_pipeline->draw(command_buffer, render_target);
 
 	if (gui)
 	{
@@ -368,20 +368,20 @@ void MultithreadingRenderPasses::draw_lighting_pass(vkb::CommandBuffer &command_
 	command_buffer.end_render_pass();
 }
 
-MultithreadingRenderPasses::ForwardShadowSubpass::ForwardShadowSubpass(vkb::RenderContext &                             render_context,
-                                                                       vkb::ShaderSource &&                             vertex_source,
-                                                                       vkb::ShaderSource &&                             fragment_source,
-                                                                       vkb::sg::Scene &                                 scene,
-                                                                       vkb::sg::Camera &                                camera,
-                                                                       vkb::sg::Camera &                                light_camera,
-                                                                       std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets) :
-    light_camera{light_camera},
+MultithreadingRenderPasses::MainSubpass::MainSubpass(vkb::RenderContext &                             render_context,
+                                                     vkb::ShaderSource &&                             vertex_source,
+                                                     vkb::ShaderSource &&                             fragment_source,
+                                                     vkb::sg::Scene &                                 scene,
+                                                     vkb::sg::Camera &                                camera,
+                                                     vkb::sg::Camera &                                shadowmap_camera,
+                                                     std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets) :
+    shadowmap_camera{shadowmap_camera},
     shadow_render_targets{shadow_render_targets},
     vkb::ForwardSubpass{render_context, std::move(vertex_source), std::move(fragment_source), scene, camera}
 {
 }
 
-void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
+void MultithreadingRenderPasses::MainSubpass::prepare()
 {
 	ForwardSubpass::prepare();
 
@@ -403,10 +403,10 @@ void MultithreadingRenderPasses::ForwardShadowSubpass::prepare()
 	shadowmap_sampler                           = std::make_unique<vkb::core::Sampler>(get_render_context().get_device(), shadowmap_sampler_create_info);
 }
 
-void MultithreadingRenderPasses::ForwardShadowSubpass::draw(vkb::CommandBuffer &command_buffer)
+void MultithreadingRenderPasses::MainSubpass::draw(vkb::CommandBuffer &command_buffer)
 {
 	ShadowUniform shadow_uniform;
-	shadow_uniform.light_matrix = vkb::vulkan_style_projection(light_camera.get_projection()) * light_camera.get_view();
+	shadow_uniform.shadowmap_projection_matrix = vkb::vulkan_style_projection(shadowmap_camera.get_projection()) * shadowmap_camera.get_view();
 
 	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
 	command_buffer.bind_image(shadow_render_target.get_views().at(0), *shadowmap_sampler, 0, 5, 0);

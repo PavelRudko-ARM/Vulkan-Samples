@@ -26,7 +26,7 @@
 
 struct alignas(16) ShadowUniform
 {
-	glm::mat4 light_matrix;        // Projection matrix used to render shadowmap
+	glm::mat4 shadowmap_projection_matrix;        // Projection matrix used to render shadowmap
 };
 
 /**
@@ -76,16 +76,16 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
      * @brief This subpass is responsible for rendering a Scene
      *		  It implements a custom draw function which passes shadowmap and light matrix
      */
-	class ForwardShadowSubpass : public vkb::ForwardSubpass
+	class MainSubpass : public vkb::ForwardSubpass
 	{
 	  public:
-		ForwardShadowSubpass(vkb::RenderContext &                             render_context,
-		                     vkb::ShaderSource &&                             vertex_source,
-		                     vkb::ShaderSource &&                             fragment_source,
-		                     vkb::sg::Scene &                                 scene,
-		                     vkb::sg::Camera &                                camera,
-		                     vkb::sg::Camera &                                light_camera,
-		                     std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets);
+		MainSubpass(vkb::RenderContext &                             render_context,
+		            vkb::ShaderSource &&                             vertex_source,
+		            vkb::ShaderSource &&                             fragment_source,
+		            vkb::sg::Scene &                                 scene,
+		            vkb::sg::Camera &                                camera,
+		            vkb::sg::Camera &                                shadowmap_camera,
+		            std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets);
 
 		virtual void prepare() override;
 
@@ -94,7 +94,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	  private:
 		std::unique_ptr<vkb::core::Sampler> shadowmap_sampler{};
 
-		vkb::sg::Camera &light_camera;
+		vkb::sg::Camera &shadowmap_camera;
 
 		std::vector<std::unique_ptr<vkb::RenderTarget>> &shadow_render_targets;
 	};
@@ -105,14 +105,14 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
 
 	/**
-     * @return A shadow render pass which should run first
+     * @return Shadow render pass which should run first
      */
 	std::unique_ptr<vkb::RenderPipeline> create_shadow_renderpass();
 
 	/**
-     * @return A lighting render pass which should run second
+     * @return Main render pass which should run second
      */
-	std::unique_ptr<vkb::RenderPipeline> create_lighting_renderpass();
+	std::unique_ptr<vkb::RenderPipeline> create_main_renderpass();
 
 	const uint32_t SHADOWMAP_RESOLUTION{1024};
 
@@ -126,7 +126,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	/**
 	 * @brief Pipeline which uses shadowmap 
 	 */
-	std::unique_ptr<vkb::RenderPipeline> lighting_render_pipeline{};
+	std::unique_ptr<vkb::RenderPipeline> main_render_pipeline{};
 
 	/**
 	 * @brief Subpass for shadowmap rendering  
@@ -136,7 +136,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	/**
 	 * @brief Camera for shadowmap rendering (view from the light source)
 	 */
-	vkb::sg::Camera *light_camera{};
+	vkb::sg::Camera *shadowmap_camera{};
 
 	/**
 	 * @brief Main camera for scene rendering
@@ -159,12 +159,11 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	 * @brief Record drawing commands using the chosen strategy
      * @return Single or multiple recorded command buffers
 	 */
-	std::vector<VkCommandBuffer>
-	    record_command_buffers();
+	std::vector<VkCommandBuffer> record_command_buffers();
 
 	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
 
-	void draw_lighting_pass(vkb::CommandBuffer &command_buffer);
+	void draw_main_pass(vkb::CommandBuffer &command_buffer);
 };
 
 std::unique_ptr<vkb::VulkanSample> create_multithreading_render_passes();
