@@ -147,9 +147,10 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	/**
 	 * @brief Record drawing commands using the chosen strategy
+     * @param main_command_buffer Already allocated command buffer for the main pass
      * @return Single or multiple recorded command buffers
 	 */
-	std::vector<VkCommandBuffer> record_command_buffers();
+	std::vector<vkb::CommandBuffer*> record_command_buffers(vkb::CommandBuffer &main_command_buffer);
 
 	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
 
