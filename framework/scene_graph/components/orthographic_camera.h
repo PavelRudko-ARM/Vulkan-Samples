@@ -34,6 +34,8 @@ class OrthographicCamera : public Camera
   public:
 	OrthographicCamera(const std::string &name);
 
+    OrthographicCamera(const std::string &name, float left, float right, float bottom, float top, float near_plane, float far_plane);
+
 	virtual ~OrthographicCamera() = default;
 
 	void set_left(float left);

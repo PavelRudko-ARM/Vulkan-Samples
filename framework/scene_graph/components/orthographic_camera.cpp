@@ -29,6 +29,17 @@ OrthographicCamera::OrthographicCamera(const std::string &name) :
     Camera{name}
 {}
 
+OrthographicCamera::OrthographicCamera(const std::string &name, float left, float right, float bottom, float top, float near_plane, float far_plane) :
+    Camera{name},
+    left{left},
+    right{right},
+    top{top},
+    bottom{bottom},
+    near_plane{near_plane},
+    far_plane{far_plane}
+{
+}
+
 void OrthographicCamera::set_left(float new_left)
 {
 	left = new_left;

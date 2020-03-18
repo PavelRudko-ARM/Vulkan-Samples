@@ -60,16 +60,10 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 	scene->clear_components<vkb::sg::Light>();
 	auto &light           = vkb::add_directional_light(*scene, glm::quat({glm::radians(-30.0f), glm::radians(175.0f), glm::radians(0.0f)}));
 	auto &light_transform = light.get_node()->get_transform();
-	light_transform.set_translation(light_transform.get_rotation() * glm::vec3(0, 0, 1) + glm::vec3(-50, 0, 0));
+	light_transform.set_translation(glm::vec3(-50, 0, 0));
 
 	// Attach a camera component to the light node
-	auto shadowmap_camera_ptr = std::make_unique<vkb::sg::OrthographicCamera>("shadowmap_camera");
-	shadowmap_camera_ptr->set_left(-100.0f);
-	shadowmap_camera_ptr->set_right(100.0f);
-	shadowmap_camera_ptr->set_bottom(-100.0f);
-	shadowmap_camera_ptr->set_top(100.0f);
-	shadowmap_camera_ptr->set_near_plane(-139.0f);
-	shadowmap_camera_ptr->set_far_plane(120.0f);
+	auto shadowmap_camera_ptr = std::make_unique<vkb::sg::OrthographicCamera>("shadowmap_camera", -100.0f, 100.0f, -100.0f, 100.0f, -139.0f, 120.0f);
 	shadowmap_camera_ptr->set_node(*light.get_node());
 	shadowmap_camera = shadowmap_camera_ptr.get();
 	light.get_node()->set_component(*shadowmap_camera_ptr);
