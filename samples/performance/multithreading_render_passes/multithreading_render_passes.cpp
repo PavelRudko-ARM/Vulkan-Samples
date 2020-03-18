@@ -55,7 +55,6 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 		shadow_render_targets[i] = create_shadow_render_target(SHADOWMAP_RESOLUTION);
 	}
 
-	// Load a scene from the assets folder
 	load_scene("scenes/bonza/Bonza4X.gltf");
 
 	scene->clear_components<vkb::sg::Light>();
