@@ -89,6 +89,11 @@ class GeometrySubpass : public Subpass
 
 	virtual void draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
+	/**
+     * @brief Thread index to use for allocating resources
+     */
+	void set_thread_index(uint32_t index);
+
   protected:
 	/**
 	 * @brief Sorts objects based on distance from camera and classifies them
@@ -102,6 +107,8 @@ class GeometrySubpass : public Subpass
 	std::vector<sg::Mesh *> meshes;
 
 	sg::Scene &scene;
+
+	uint32_t thread_index{0};
 
 	void draw_submesh_command(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh);
 };

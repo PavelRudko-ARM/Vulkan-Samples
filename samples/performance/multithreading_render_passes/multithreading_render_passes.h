@@ -59,17 +59,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 		              vkb::sg::Scene &    scene,
 		              vkb::sg::Camera &   camera);
 
-		/**
-     * @brief Thread index to use for allocating resources
-     */
-		void set_thread_index(uint32_t index);
-
-		virtual void draw(vkb::CommandBuffer &command_buffer) override;
-
 		virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
-
-	  private:
-		uint32_t thread_index{0};
 	};
 
 	/**

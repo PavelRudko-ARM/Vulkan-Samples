@@ -428,39 +428,6 @@ MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &ren
 {
 }
 
-void MultithreadingRenderPasses::ShadowSubpass::set_thread_index(uint32_t index)
-{
-	thread_index = index;
-}
-
-void MultithreadingRenderPasses::ShadowSubpass::draw(vkb::CommandBuffer &command_buffer)
-{
-	std::multimap<float, std::pair<vkb::sg::Node *, vkb::sg::SubMesh *>> opaque_nodes;
-	std::multimap<float, std::pair<vkb::sg::Node *, vkb::sg::SubMesh *>> transparent_nodes;
-
-	get_sorted_nodes(opaque_nodes, transparent_nodes);
-
-	for (auto node_it = opaque_nodes.begin(); node_it != opaque_nodes.end(); node_it++)
-	{
-		update_uniform(command_buffer, *node_it->second.first, thread_index);
-
-		const auto &scale      = node_it->second.first->get_transform().get_scale();
-		bool        flipped    = scale.x * scale.y * scale.z < 0;
-		VkFrontFace front_face = flipped ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
-
-		draw_submesh(command_buffer, *node_it->second.second, front_face);
-	}
-
-	command_buffer.set_depth_stencil_state(get_depth_stencil_state());
-
-	for (auto node_it = transparent_nodes.rbegin(); node_it != transparent_nodes.rend(); node_it++)
-	{
-		update_uniform(command_buffer, *node_it->second.first, thread_index);
-
-		draw_submesh(command_buffer, *node_it->second.second, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	}
-}
-
 void MultithreadingRenderPasses::ShadowSubpass::draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face)
 {
 	auto &device = command_buffer.get_device();
