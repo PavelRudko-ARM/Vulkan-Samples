@@ -516,7 +516,7 @@ void MSAASample::draw(vkb::CommandBuffer &command_buffer, vkb::RenderTarget &ren
 		}
 	}
 
-    set_viewport_and_scissor(command_buffer, render_target.get_extent());
+	set_viewport_and_scissor(command_buffer, render_target.get_extent());
 
 	scene_pipeline->draw(command_buffer, render_target);
 

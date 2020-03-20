@@ -86,8 +86,8 @@ class GeometrySubpass : public Subpass
 	virtual void draw(CommandBuffer &command_buffer) override;
 
 	/**
-     * @brief Thread index to use for allocating resources
-     */
+	 * @brief Thread index to use for allocating resources
+	 */
 	void set_thread_index(uint32_t index);
 
   protected:
