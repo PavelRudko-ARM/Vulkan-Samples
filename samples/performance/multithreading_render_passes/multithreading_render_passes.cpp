@@ -333,7 +333,7 @@ void MultithreadingRenderPasses::MainSubpass::prepare()
 	dynamic_resources = {"GlobalUniform", "ShadowUniform"};
 
 	// Create a sampler for sampling the shadowmap during the lighting process
-	// Address mode and border color are used to put everything outside of the light camera frustum into shadow
+	// Address mode and border color are used to put everything outside of the shadow camera frustum into shadow
 	// Depth is closer to 1 for near objects and closer to 0 for distant objects
 	// If we sample outside the shadowmap range [0,0]-[1,1], sampler clamps to border and returns 1 (opaque white)
 	VkSamplerCreateInfo shadowmap_sampler_create_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
