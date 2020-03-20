@@ -284,6 +284,11 @@ class VulkanSample : public Application
 	 */
 	sg::Node &add_free_camera(const std::string &node_name);
 
+	/**
+	 * @brief Set viewport and scissor state in command buffer for a given extent
+	 */
+	void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D &extent) const;
+
 	static constexpr float STATS_VIEW_RESET_TIME{10.0f};        // 10 seconds
 
 	/**

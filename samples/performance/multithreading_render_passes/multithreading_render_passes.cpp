@@ -163,20 +163,6 @@ void MultithreadingRenderPasses::draw_gui()
 	});
 }
 
-void set_viewport_and_scissor(vkb::CommandBuffer &command_buffer, const VkExtent2D &extent)
-{
-	VkViewport viewport{};
-	viewport.width    = static_cast<float>(extent.width);
-	viewport.height   = static_cast<float>(extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	command_buffer.set_viewport(0, {viewport});
-
-	VkRect2D scissor{};
-	scissor.extent = extent;
-	command_buffer.set_scissor(0, {scissor});
-}
-
 std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buffers(vkb::CommandBuffer &main_command_buffer)
 {
 	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
