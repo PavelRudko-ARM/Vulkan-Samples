@@ -59,7 +59,12 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 		              vkb::sg::Scene &    scene,
 		              vkb::sg::Camera &   camera);
 
-		virtual void draw_submesh(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE) override;
+	  protected:
+		virtual void prepare_pipeline_state(vkb::CommandBuffer &command_buffer, VkFrontFace front_face, bool double_sided_material) override;
+
+		virtual vkb::PipelineLayout &prepare_pipeline_layout(vkb::CommandBuffer &command_buffer, const std::vector<vkb::ShaderModule *> &shader_modules) override;
+
+		virtual void prepare_push_constants(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh) override;
 	};
 
 	/**
@@ -150,7 +155,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
      * @param main_command_buffer Already allocated command buffer for the main pass
      * @return Single or multiple recorded command buffers
 	 */
-	std::vector<vkb::CommandBuffer*> record_command_buffers(vkb::CommandBuffer &main_command_buffer);
+	std::vector<vkb::CommandBuffer *> record_command_buffers(vkb::CommandBuffer &main_command_buffer);
 
 	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
 

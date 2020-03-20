@@ -85,16 +85,24 @@ class GeometrySubpass : public Subpass
 	 */
 	virtual void draw(CommandBuffer &command_buffer) override;
 
-	void update_uniform(CommandBuffer &command_buffer, sg::Node &node, size_t thread_index = 0);
-
-	virtual void draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE);
-
 	/**
      * @brief Thread index to use for allocating resources
      */
 	void set_thread_index(uint32_t index);
 
   protected:
+	void update_uniform(CommandBuffer &command_buffer, sg::Node &node, size_t thread_index = 0);
+
+	virtual void draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh, VkFrontFace front_face = VK_FRONT_FACE_COUNTER_CLOCKWISE);
+
+	virtual void prepare_pipeline_state(CommandBuffer &command_buffer, VkFrontFace front_face, bool double_sided_material);
+
+	virtual PipelineLayout &prepare_pipeline_layout(CommandBuffer &command_buffer, const std::vector<ShaderModule *> &shader_modules);
+
+	virtual void prepare_push_constants(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh);
+
+	void draw_submesh_command(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh);
+
 	/**
 	 * @brief Sorts objects based on distance from camera and classifies them
 	 *        into opaque and transparent in the arrays provided
@@ -109,8 +117,6 @@ class GeometrySubpass : public Subpass
 	sg::Scene &scene;
 
 	uint32_t thread_index{0};
-
-	void draw_submesh_command(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh);
 };
 
 }        // namespace vkb

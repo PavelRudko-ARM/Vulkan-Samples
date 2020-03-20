@@ -157,11 +157,11 @@ class RenderContext
 	 */
 	void submit(CommandBuffer &command_buffer);
 
-    /**
+	/**
 	 * @brief Submits multiple command buffers to the right queue
 	 * @param command_buffers Command buffers containing recorded commands
 	 */
-	void submit(const std::vector<CommandBuffer*> &command_buffers);
+	void submit(const std::vector<CommandBuffer *> &command_buffers);
 
 	/**
 	 * @brief begin_frame

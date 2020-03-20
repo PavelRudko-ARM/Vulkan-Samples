@@ -153,43 +153,18 @@ void GeometrySubpass::draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &s
 {
 	auto &device = command_buffer.get_device();
 
-	RasterizationState rasterization_state{};
-	rasterization_state.front_face = front_face;
-
-	if (sub_mesh.get_material()->double_sided)
-	{
-		rasterization_state.cull_mode = VK_CULL_MODE_NONE;
-	}
-
-	command_buffer.set_rasterization_state(rasterization_state);
-
-	MultisampleState multisample_state{};
-	multisample_state.rasterization_samples = sample_count;
-	command_buffer.set_multisample_state(multisample_state);
+	prepare_pipeline_state(command_buffer, front_face, sub_mesh.get_material()->double_sided);
 
 	auto &vert_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_VERTEX_BIT, get_vertex_shader(), sub_mesh.get_shader_variant());
 	auto &frag_shader_module = device.get_resource_cache().request_shader_module(VK_SHADER_STAGE_FRAGMENT_BIT, get_fragment_shader(), sub_mesh.get_shader_variant());
 
 	std::vector<ShaderModule *> shader_modules{&vert_shader_module, &frag_shader_module};
 
-	// Set UBO to use dynamic indexing
-	for (auto &shader_module : shader_modules)
-	{
-		shader_module->set_resource_mode(ShaderResourceMode::Dynamic, "GlobalUniform");
-	}
-
-	auto &pipeline_layout = device.get_resource_cache().request_pipeline_layout(shader_modules);
+	auto &pipeline_layout = prepare_pipeline_layout(command_buffer, shader_modules);
 
 	command_buffer.bind_pipeline_layout(pipeline_layout);
 
-	auto pbr_material = dynamic_cast<const sg::PBRMaterial *>(sub_mesh.get_material());
-
-	PBRMaterialUniform pbr_material_uniform{};
-	pbr_material_uniform.base_color_factor = pbr_material->base_color_factor;
-	pbr_material_uniform.metallic_factor   = pbr_material->metallic_factor;
-	pbr_material_uniform.roughness_factor  = pbr_material->roughness_factor;
-
-	command_buffer.push_constants_accumulated(pbr_material_uniform);
+	prepare_push_constants(command_buffer, sub_mesh);
 
 	auto &descriptor_set_layout = pipeline_layout.get_descriptor_set_layout(0);
 
@@ -249,6 +224,46 @@ void GeometrySubpass::draw_submesh(CommandBuffer &command_buffer, sg::SubMesh &s
 	}
 
 	draw_submesh_command(command_buffer, sub_mesh);
+}
+
+void GeometrySubpass::prepare_pipeline_state(CommandBuffer &command_buffer, VkFrontFace front_face, bool double_sided_material)
+{
+	RasterizationState rasterization_state{};
+	rasterization_state.front_face = front_face;
+
+	if (double_sided_material)
+	{
+		rasterization_state.cull_mode = VK_CULL_MODE_NONE;
+	}
+
+	command_buffer.set_rasterization_state(rasterization_state);
+
+	MultisampleState multisample_state{};
+	multisample_state.rasterization_samples = sample_count;
+	command_buffer.set_multisample_state(multisample_state);
+}
+
+PipelineLayout &GeometrySubpass::prepare_pipeline_layout(CommandBuffer &command_buffer, const std::vector<ShaderModule *> &shader_modules)
+{
+	// Set UBO to use dynamic indexing
+	for (auto &shader_module : shader_modules)
+	{
+		shader_module->set_resource_mode(ShaderResourceMode::Dynamic, "GlobalUniform");
+	}
+
+	return command_buffer.get_device().get_resource_cache().request_pipeline_layout(shader_modules);
+}
+
+void GeometrySubpass::prepare_push_constants(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh)
+{
+	auto pbr_material = dynamic_cast<const sg::PBRMaterial *>(sub_mesh.get_material());
+
+	PBRMaterialUniform pbr_material_uniform{};
+	pbr_material_uniform.base_color_factor = pbr_material->base_color_factor;
+	pbr_material_uniform.metallic_factor   = pbr_material->metallic_factor;
+	pbr_material_uniform.roughness_factor  = pbr_material->roughness_factor;
+
+	command_buffer.push_constants_accumulated(pbr_material_uniform);
 }
 
 void GeometrySubpass::draw_submesh_command(CommandBuffer &command_buffer, sg::SubMesh &sub_mesh)
