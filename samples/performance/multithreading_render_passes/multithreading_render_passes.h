@@ -146,9 +146,9 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	uint32_t shadowmap_attachment_index{0};
 
-	bool gui_use_separate_command_buffers{false};
+	bool gui_use_separate_command_buffers{true};
 
-	bool gui_use_multithreading{false};
+	bool gui_use_multithreading{true};
 
 	/**
 	 * @brief Record drawing commands using the chosen strategy
@@ -157,9 +157,13 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	 */
 	std::vector<vkb::CommandBuffer *> record_command_buffers(vkb::CommandBuffer &main_command_buffer);
 
-	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
+	void record_separate_primary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer);
 
-	void draw_main_pass(vkb::CommandBuffer &command_buffer);
+	void record_separate_secondary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer);
+
+	void draw_shadow_pass(vkb::CommandBuffer &command_buffer, bool use_secondary_command_buffers = false);
+
+	void draw_main_pass(vkb::CommandBuffer &command_buffer, bool use_secondary_command_buffers = false);
 };
 
 std::unique_ptr<vkb::VulkanSample> create_multithreading_render_passes();
