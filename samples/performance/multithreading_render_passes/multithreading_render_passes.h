@@ -37,6 +37,13 @@ struct alignas(16) ShadowUniform
 class MultithreadingRenderPasses : public vkb::VulkanSample
 {
   public:
+	enum class MultithreadingMode
+	{
+		None,
+		PrimaryCommandBuffers,
+		SecondaryCommandBuffers,
+	};
+
 	MultithreadingRenderPasses();
 
 	virtual ~MultithreadingRenderPasses() = default;
@@ -148,7 +155,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	bool gui_use_separate_command_buffers{true};
 
-	bool gui_use_multithreading{true};
+	int gui_multithreading_mode{0};
 
 	/**
 	 * @brief Record drawing commands using the chosen strategy

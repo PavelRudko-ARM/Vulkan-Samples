@@ -33,13 +33,16 @@ MultithreadingRenderPasses::MultithreadingRenderPasses()
 	auto &config = get_configuration();
 
 	config.insert<vkb::BoolSetting>(0, gui_use_separate_command_buffers, false);
-	config.insert<vkb::BoolSetting>(0, gui_use_multithreading, false);
+	config.insert<vkb::IntSetting>(0, gui_multithreading_mode, 0);
 
 	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
-	config.insert<vkb::BoolSetting>(1, gui_use_multithreading, false);
+	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 0);
 
-	config.insert<vkb::BoolSetting>(2, gui_use_separate_command_buffers, true);
-	config.insert<vkb::BoolSetting>(2, gui_use_multithreading, true);
+	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
+	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 1);
+
+	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
+	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 2);
 }
 
 bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
@@ -152,13 +155,26 @@ void MultithreadingRenderPasses::update(float delta_time)
 
 void MultithreadingRenderPasses::draw_gui()
 {
-	gui->show_options_window([this]() {
+	const bool landscape = reinterpret_cast<vkb::sg::PerspectiveCamera *>(camera)->get_aspect_ratio() > 1.0f;
+
+	gui->show_options_window([this, landscape]() {
 		ImGui::AlignTextToFramePadding();
 		ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
 		ImGui::Checkbox("Use separate command buffers", &gui_use_separate_command_buffers);
 		if (gui_use_separate_command_buffers)
 		{
-			ImGui::Checkbox("Multithreading", &gui_use_multithreading);
+			// Multithreading mode options
+			ImGui::RadioButton("No multi-threading", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::None));
+			if (landscape)
+			{
+				ImGui::SameLine();
+			}
+			ImGui::RadioButton("Primary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::PrimaryCommandBuffers));
+			if (landscape)
+			{
+				ImGui::SameLine();
+			}
+			ImGui::RadioButton("Secondary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::SecondaryCommandBuffers));
 		}
 	});
 }
@@ -171,19 +187,26 @@ std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buf
 	std::vector<vkb::CommandBuffer *> command_buffers;
 
 	//Resources are requested from pools for thread #1 in shadow pass if multithreading is used
-	shadow_subpass->set_thread_index(gui_use_multithreading ? 1 : 0);
+	bool use_multithreading = gui_use_separate_command_buffers && (gui_multithreading_mode != static_cast<int>(MultithreadingMode::None));
+	shadow_subpass->set_thread_index(use_multithreading ? 1 : 0);
 
 	if (gui_use_separate_command_buffers)
 	{
-		if (gui_use_multithreading)
+		if (use_multithreading)
 		{
 			if (thread_pool.size() < 2)
 			{
 				thread_pool.resize(2);
 			}
 
-			record_separate_secondary_command_buffers(command_buffers, main_command_buffer);
-			//record_separate_primary_command_buffers(command_buffers, main_command_buffer);
+			if (gui_multithreading_mode == static_cast<int>(MultithreadingMode::PrimaryCommandBuffers))
+			{
+				record_separate_primary_command_buffers(command_buffers, main_command_buffer);
+			}
+			else
+			{
+				record_separate_secondary_command_buffers(command_buffers, main_command_buffer);
+			}
 		}
 		else
 		{
@@ -257,9 +280,9 @@ void MultithreadingRenderPasses::record_separate_primary_command_buffers(std::ve
 
 void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer)
 {
-	auto        reset_mode    = vkb::CommandBuffer::ResetMode::ResetPool;
-	const auto &queue         = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
-	auto &      render_target = render_context->get_active_frame().get_render_target();
+	auto        reset_mode           = vkb::CommandBuffer::ResetMode::ResetPool;
+	const auto &queue                = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
+	auto &      render_target        = render_context->get_active_frame().get_render_target();
 	auto &      shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
 
 	std::vector<std::future<void>> cmd_buf_futures;
@@ -269,10 +292,10 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	                                                                                        VK_COMMAND_BUFFER_LEVEL_SECONDARY,
 	                                                                                        1);
 
-	auto &scene_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
-	                                                                                       reset_mode,
-	                                                                                       VK_COMMAND_BUFFER_LEVEL_SECONDARY,
-	                                                                                       0);
+	auto &                         scene_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
+                                                                                           reset_mode,
+                                                                                           VK_COMMAND_BUFFER_LEVEL_SECONDARY,
+                                                                                           0);
 	vkb::ColorBlendAttachmentState color_blend_attachment;
 	vkb::ColorBlendState           color_blend_state;
 	color_blend_attachment.blend_enable = VK_FALSE;
@@ -307,7 +330,6 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	//Recording shadow command buffer
 	auto fut = thread_pool.push(
 	    [this, &shadow_command_buffer, &main_command_buffer](size_t thread_id) {
-		    
 		    draw_shadow_pass(shadow_command_buffer, true);
 		    shadow_command_buffer.end();
 	    });
@@ -316,8 +338,8 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	// Recording main command buffer
 	fut = thread_pool.push(
 	    [this, &scene_command_buffer, &main_command_buffer](size_t thread_id) {
-	        draw_main_pass(scene_command_buffer, true);
-	        scene_command_buffer.end();
+		    draw_main_pass(scene_command_buffer, true);
+		    scene_command_buffer.end();
 	    });
 	cmd_buf_futures.push_back(std::move(fut));
 
