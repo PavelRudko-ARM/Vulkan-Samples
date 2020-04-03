@@ -23,6 +23,19 @@
 
 In some cases multiple stages of frame rendering can't be performed in a single render pass. This sample shows how multi-threading can help to boost performance when using multiple render passes to render a single frame. 
 
+## Using multiple render passes
+
+ This sample uses two render passes to implement a technique called shadowmapping. 
+ The first render pass is used to render a shadowmap. It contains only depth values and represents the scene as viewed from the light position.
+
+ The second one pass renders the actual scene from the camera point of view and uses the shadowmap from the previous pass. When light calculation is performed in fragment shader the depth value from shadow map is used to determine whether the fragment is ocludded (and therefore is in shadow) or not.
+
+ The diagram below shows this two step process:
+
+![Render Passes Diagram](images/render_passes_diagram.png)
+
+ Note that there is a dependency because the second pass uses the output of the first. Since these are two separate render passes we cannot use a ``VkSubpassDependency`` for synchronization. Instead ``VkImageMemoryBarrier`` is used.
+
 ## The Multi-threading Render Passes Sample
 
 Given two or more render passes we can record them separately in multiple threads. 
@@ -39,7 +52,7 @@ The way to achieve this is to record all the secondary command buffers in multip
 
 When using any of these methods for multi-threading general recommendations should be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
 
-This sample compares different approaches of recording multiple render passes. It has two renderpasses: the first is used to render a shadowmap and the second one renders the actual scene using the result of the previous pass.
+This sample compares different approaches of recording multiple render passes.
 
 If "Use separate command buffers" checkbox is disabled all the commands are recorded into a single command buffer. Enabling it while using only a single thread shows no visible difference in frame rate.
 
