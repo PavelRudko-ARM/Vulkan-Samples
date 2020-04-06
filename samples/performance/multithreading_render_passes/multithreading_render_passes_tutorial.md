@@ -70,15 +70,19 @@ And using secondary command buffers helps to reduce frame time by 4%:
 
 ![Secondary Command Buffers](images/secondary_buffers.png)
 
+## Further reading
+
+[Command buffer usage and multi-threaded recording](../command_buffer_usage/command_buffer_usage_tutorial.md)
+
 ## Best practice summary
 
 **Do**
 
 * Use secondary level command buffers instead of submitting multiple primary command buffers per frame.
 
-**Don't**
+**Avoid**
 
-* Use a separate thread for each renderpass if their workloads are significantly different.
+* Avoid having a separate thread for each renderpass if their workloads are significantly different.
 
 **Impact**
 
