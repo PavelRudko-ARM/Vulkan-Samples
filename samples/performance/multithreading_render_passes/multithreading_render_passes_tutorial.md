@@ -45,8 +45,8 @@ Note that in order to achieve a good improvement the workload must be similiar f
 One way to use multi-threading is to create a separate primary level command buffer for each render pass. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
 
 This however adds a little overhead. In order to improve it we can use secondary level command buffers instead. This requires to follow the following rules (according to the Vulkan Spec):
-* [Each element of pCommandBuffers must be in the pending or executable state](https://www.khronos.org/registry/vulkan/specs/1.2/man/html/vkCmdExecuteCommands.html)
-* [commandBuffer must be a primary VkCommandBuffer](https://www.khronos.org/registry/vulkan/specs/1.2/man/html/vkCmdBeginRenderPass.html)
+* Primary command buffer must be in the [pending or executable state](https://www.khronos.org/registry/vulkan/specs/1.2-extensions//man/html/vkCmdExecuteCommands.html) when ``vkCmdExecuteCommands`` is called
+* Render pass can begin only in [primary](https://www.khronos.org/registry/vulkan/specs/1.2-extensions//man/html/vkCmdBeginRenderPass.html) command buffer
 
 The way to achieve this is to record all the secondary command buffers in multiple threads, then start recording the primary command buffer. Inside of each render pass a secondary command buffer is specified using ``vkCmdExecuteCommands``.
 
