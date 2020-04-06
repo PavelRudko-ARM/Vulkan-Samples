@@ -32,17 +32,11 @@ MultithreadingRenderPasses::MultithreadingRenderPasses()
 {
 	auto &config = get_configuration();
 
-	config.insert<vkb::BoolSetting>(0, gui_use_separate_command_buffers, false);
 	config.insert<vkb::IntSetting>(0, gui_multithreading_mode, 0);
 
-	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
-	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 0);
+	config.insert<vkb::IntSetting>(0, gui_multithreading_mode, 1);
 
-	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
-	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 1);
-
-	config.insert<vkb::BoolSetting>(1, gui_use_separate_command_buffers, true);
-	config.insert<vkb::IntSetting>(1, gui_multithreading_mode, 2);
+	config.insert<vkb::IntSetting>(0, gui_multithreading_mode, 2);
 }
 
 bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
@@ -160,22 +154,19 @@ void MultithreadingRenderPasses::draw_gui()
 	gui->show_options_window([this, landscape]() {
 		ImGui::AlignTextToFramePadding();
 		ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
-		ImGui::Checkbox("Use separate command buffers", &gui_use_separate_command_buffers);
-		if (gui_use_separate_command_buffers)
+
+		// Multithreading mode options
+		ImGui::RadioButton("No multi-threading", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::None));
+		if (landscape)
 		{
-			// Multithreading mode options
-			ImGui::RadioButton("No multi-threading", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::None));
-			if (landscape)
-			{
-				ImGui::SameLine();
-			}
-			ImGui::RadioButton("Primary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::PrimaryCommandBuffers));
-			if (landscape)
-			{
-				ImGui::SameLine();
-			}
-			ImGui::RadioButton("Secondary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::SecondaryCommandBuffers));
+			ImGui::SameLine();
 		}
+		ImGui::RadioButton("Primary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::PrimaryCommandBuffers));
+		if (landscape)
+		{
+			ImGui::SameLine();
+		}
+		ImGui::RadioButton("Secondary buffers", &gui_multithreading_mode, static_cast<int>(MultithreadingMode::SecondaryCommandBuffers));
 	});
 }
 
@@ -187,53 +178,29 @@ std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buf
 	std::vector<vkb::CommandBuffer *> command_buffers;
 
 	//Resources are requested from pools for thread #1 in shadow pass if multithreading is used
-	bool use_multithreading = gui_use_separate_command_buffers && (gui_multithreading_mode != static_cast<int>(MultithreadingMode::None));
+	bool use_multithreading = gui_multithreading_mode != static_cast<int>(MultithreadingMode::None);
 	shadow_subpass->set_thread_index(use_multithreading ? 1 : 0);
 
-	if (gui_use_separate_command_buffers)
+	if (use_multithreading && thread_pool.size() < 2)
 	{
-		if (use_multithreading)
-		{
-			if (thread_pool.size() < 2)
-			{
-				thread_pool.resize(2);
-			}
+		thread_pool.resize(2);
+	}
 
-			if (gui_multithreading_mode == static_cast<int>(MultithreadingMode::PrimaryCommandBuffers))
-			{
-				record_separate_primary_command_buffers(command_buffers, main_command_buffer);
-			}
-			else
-			{
-				record_separate_secondary_command_buffers(command_buffers, main_command_buffer);
-			}
-		}
-		else
-		{
-			// Recording shadow command buffer
-			auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue, reset_mode);
-			shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-			draw_shadow_pass(shadow_command_buffer);
-			shadow_command_buffer.end();
-
-			// Recording lighting command buffer
+	switch (gui_multithreading_mode)
+	{
+		case static_cast<int>(MultithreadingMode::PrimaryCommandBuffers):
+			record_separate_primary_command_buffers(command_buffers, main_command_buffer);
+			break;
+		case static_cast<int>(MultithreadingMode::SecondaryCommandBuffers):
+			record_separate_secondary_command_buffers(command_buffers, main_command_buffer);
+			break;
+		default:
+			// Recording both renderpasses into single command buffer
 			main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+			draw_shadow_pass(main_command_buffer);
 			draw_main_pass(main_command_buffer);
 			main_command_buffer.end();
-
-			command_buffers.push_back(&shadow_command_buffer);
 			command_buffers.push_back(&main_command_buffer);
-		}
-	}
-	else
-	{
-		// Recording both renderpasses into single command buffer
-		main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-		draw_shadow_pass(main_command_buffer);
-		draw_main_pass(main_command_buffer);
-		main_command_buffer.end();
-
-		command_buffers.push_back(&main_command_buffer);
 	}
 
 	return command_buffers;

@@ -52,11 +52,11 @@ The way to achieve this is to record all the secondary command buffers in multip
 
 When using any of these methods for multi-threading general recommendations should be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
 
-This sample compares different approaches of recording multiple render passes.
+This sample compares different approaches of recording multiple render passes. Radio buttons allow to choose one of 3 modes.
 
-If "Use separate command buffers" checkbox is disabled all the commands are recorded into a single command buffer. Enabling it while using only a single thread shows no visible difference in frame rate.
+With multi-threading disabled all the commands are recorded into single primary level command buffer.
 
-When separate command buffers are used the multi-threading strategy can be chosen between "Primary buffers" and "Secondary buffers" to enable one of the approaches described above.
+The other two options ("Primary buffers" and "Secondary buffers") correspond to one of the approaches described above.
 
 Below are screenshots of the sample running on a phone with a Mali G72 GPU:
 

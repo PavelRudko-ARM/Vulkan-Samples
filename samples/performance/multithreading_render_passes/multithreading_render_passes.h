@@ -153,8 +153,6 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	uint32_t shadowmap_attachment_index{0};
 
-	bool gui_use_separate_command_buffers{true};
-
 	int gui_multithreading_mode{0};
 
 	/**
