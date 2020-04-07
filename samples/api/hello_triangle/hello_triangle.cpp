@@ -249,6 +249,10 @@ void HelloTriangle::init_instance(Context &                        context,
 	VK_CHECK(vkCreateInstance(&instance_info, nullptr, &context.instance));
 
 	volkLoadInstance(context.instance);
+
+#if defined(VKB_DEBUG) || defined(VKB_VALIDATION_LAYERS)
+	VK_CHECK(vkCreateDebugReportCallbackEXT(context.instance, &debug_report_create_info, nullptr, &context.debug_callback));
+#endif
 }
 
 /**
@@ -1088,6 +1092,7 @@ void HelloTriangle::update(float delta_time)
 
 	auto res = acquire_next_image(context, &index);
 
+	// Handle outdated error in acquire.
 	if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		resize(context.swapchain_dimensions.width, context.swapchain_dimensions.height);
@@ -1098,17 +1103,15 @@ void HelloTriangle::update(float delta_time)
 		return;
 	}
 
-	if (res != VK_SUCCESS)
-	{
-		LOGE("Outdated swapchain image.");
-		return;
-	}
-
 	render_triangle(context, index);
 	res = present_image(context, index);
 
-	// Handle Outdated error in acquire.
-	if (res != VK_SUCCESS)
+	// Handle Outdated error in present.
+	if (res == VK_SUBOPTIMAL_KHR || res == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		resize(context.swapchain_dimensions.width, context.swapchain_dimensions.height);
+	}
+	else if (res != VK_SUCCESS)
 	{
 		LOGE("Failed to present swapchain image.");
 	}

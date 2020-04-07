@@ -83,10 +83,13 @@ Additionally you may find the following links useful:
   - [Multi-threaded recording with multiple render passes](./samples/performance/multithreading_render_passes/multithreading_render_passes_tutorial.md)
 - **AFBC**
   - [Appropriate use of AFBC](./samples/performance/afbc/afbc_tutorial.md)
+- **API samples**
+  - [Overview for the API samples](./samples/api/README.md)
+- **Extension samples**
+  - [Overview for the extension samples](./samples/extensions/README.md)
 - **Misc**
   - [Driver version](./docs/misc.md#driver-version)
   - [Memory limits](./docs/memory_limits.md)
-  - [Vulkan FAQ](./docs/faq.md)
 
 ## Setup
 

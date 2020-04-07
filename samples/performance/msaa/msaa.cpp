@@ -77,7 +77,7 @@ MSAASample::MSAASample()
 	add_device_extension(VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME, true);
 
 	// Extension dependency requirements (given that instance API version is 1.0.0)
-	add_instance_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+	add_instance_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, true);
 	add_device_extension(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME, true);
 	add_device_extension(VK_KHR_MAINTENANCE2_EXTENSION_NAME, true);
 	add_device_extension(VK_KHR_MULTIVIEW_EXTENSION_NAME, true);
@@ -126,9 +126,10 @@ bool MSAASample::prepare(vkb::Platform &platform)
 	update_pipelines();
 
 	stats = std::make_unique<vkb::Stats>(std::set<vkb::StatIndex>{vkb::StatIndex::frame_times,
+	                                                              vkb::StatIndex::l2_ext_read_bytes,
 	                                                              vkb::StatIndex::l2_ext_write_bytes});
 
-	gui = std::make_unique<vkb::Gui>(*this, platform.get_window().get_dpi_factor());
+	gui = std::make_unique<vkb::Gui>(*this, platform.get_window());
 
 	return true;
 }
@@ -143,7 +144,7 @@ std::unique_ptr<vkb::RenderTarget> MSAASample::create_render_target(vkb::core::I
 	auto &device = swapchain_image.get_device();
 	auto &extent = swapchain_image.get_extent();
 
-	auto              depth_format        = vkb::get_suitable_depth_format(device.get_gpu().get_handle(), true);
+	auto              depth_format        = vkb::get_suitable_depth_format(device.get_gpu().get_handle());
 	bool              msaa_enabled        = sample_count != VK_SAMPLE_COUNT_1_BIT;
 	VkImageUsageFlags depth_usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	VkImageUsageFlags depth_resolve_usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -516,7 +517,18 @@ void MSAASample::draw(vkb::CommandBuffer &command_buffer, vkb::RenderTarget &ren
 		}
 	}
 
-	set_viewport_and_scissor(command_buffer, render_target.get_extent());
+	auto &extent = render_target.get_extent();
+
+	VkViewport viewport{};
+	viewport.width    = static_cast<float>(extent.width);
+	viewport.height   = static_cast<float>(extent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	command_buffer.set_viewport(0, {viewport});
+
+	VkRect2D scissor{};
+	scissor.extent = extent;
+	command_buffer.set_scissor(0, {scissor});
 
 	scene_pipeline->draw(command_buffer, render_target);
 
@@ -655,7 +667,7 @@ void MSAASample::resolve_color_separate_pass(vkb::CommandBuffer &command_buffer,
 		command_buffer.image_memory_barrier(views.at(color_destination), memory_barrier);
 	}
 
-	// Resolve multisampled attachment to destination
+	// Resolve multisampled attachment to destination, extremely expensive
 	command_buffer.resolve_image(views.at(i_color_ms).get_image(), views.at(color_destination).get_image(), {image_resolve});
 
 	// Transition attachments out of transfer stage
@@ -783,7 +795,7 @@ void MSAASample::draw_gui()
 		    {
 			    ImGui::SameLine();
 		    }
-		    ImGui::Checkbox("Outline effect (2RPs)", &gui_run_postprocessing);
+		    ImGui::Checkbox("Post-processing (2 renderpasses)", &gui_run_postprocessing);
 
 		    ImGui::Text("Resolve color: ");
 		    ImGui::SameLine();
