@@ -62,11 +62,11 @@ Below are screenshots of the sample running on a phone with a Mali G72 GPU:
 
 ![Single Thread](images/single_thread.png)
 
-Using two threads gives a 10ms improvement:
+Using two threads gives a 8.8ms improvement:
 
 ![Primary Command Buffers](images/primary_buffers.png)
 
-And using secondary command buffers helps to save 50M CPU cycles each second and reduce frame time by 4%:
+And using secondary command buffers helps to save 40M CPU cycles each second and reduce frame time by 5%:
 
 ![Secondary Command Buffers](images/secondary_buffers.png)
 
