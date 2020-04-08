@@ -70,6 +70,20 @@ And using secondary command buffers helps to save 50M CPU cycles each second and
 
 ![Secondary Command Buffers](images/secondary_buffers.png)
 
+[Android Profiler](https://developer.android.com/studio/profile/android-profiler) can be useful to see if the process of command buffers recording takes a significant part of frame time (and therefore frame time can be noticeably reduced by multi-threading this process).
+
+![Android Profiler: Allocate and Free](images/android_profiler_secondary_buffers.png)
+_Android Profiler capture_
+
+In this particular case application is CPU bound and multi-threading shows a good performance increase. The table below compares total time and impact of the function which records command buffers.
+
+Mode | Commands recording time (ms) | Contribution
+---|---|---|---
+No multi-threading | 9.24 | 93 %
+Primary buffers | 7.5 | 76 %
+Secondary buffers | 7.12 | 72 %
+_Total capture duration is 9.916ms in all 3 cases_
+
 ## Further reading
 
 [Command buffer usage and multi-threaded recording](../command_buffer_usage/command_buffer_usage_tutorial.md)
