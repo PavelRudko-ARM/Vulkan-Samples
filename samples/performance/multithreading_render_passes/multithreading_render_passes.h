@@ -37,13 +37,6 @@ struct alignas(16) ShadowUniform
 class MultithreadingRenderPasses : public vkb::VulkanSample
 {
   public:
-	enum class MultithreadingMode
-	{
-		None,
-		PrimaryCommandBuffers,
-		SecondaryCommandBuffers,
-	};
-
 	MultithreadingRenderPasses();
 
 	virtual ~MultithreadingRenderPasses() = default;
@@ -153,7 +146,7 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	uint32_t shadowmap_attachment_index{0};
 
-	int gui_multithreading_mode{0};
+	bool gui_multithreading_enabled{false};
 
 	/**
 	 * @brief Record drawing commands using the chosen strategy
@@ -164,11 +157,9 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	void record_separate_primary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer);
 
-	void record_separate_secondary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer);
+	void draw_shadow_pass(vkb::CommandBuffer &command_buffer);
 
-	void draw_shadow_pass(vkb::CommandBuffer &command_buffer, bool use_secondary_command_buffers = false);
-
-	void draw_main_pass(vkb::CommandBuffer &command_buffer, bool use_secondary_command_buffers = false);
+	void draw_main_pass(vkb::CommandBuffer &command_buffer);
 };
 
 std::unique_ptr<vkb::VulkanSample> create_multithreading_render_passes();
