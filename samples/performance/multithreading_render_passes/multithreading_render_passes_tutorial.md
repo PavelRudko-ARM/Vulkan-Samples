@@ -26,9 +26,10 @@ In some cases multiple stages of frame rendering can't be performed in a single 
 ## Using multiple render passes
 
  This sample uses two render passes to implement a technique called shadowmapping. 
+
  The first render pass is used to render a shadowmap. It contains only depth values and represents the scene as viewed from the light position.
 
- The second one pass renders the actual scene from the camera point of view and uses the shadowmap from the previous pass. When light calculation is performed in fragment shader the depth value from shadow map is used to determine whether the fragment is ocludded (and therefore is in shadow) or not.
+ The second pass renders the actual scene from the camera point of view and uses the shadowmap from the previous pass. When light calculation is performed in fragment shader the depth value from shadow map is used to determine whether the fragment is ocludded (and therefore is in shadow) or not.
 
  The diagram below shows this two step process:
 
@@ -42,47 +43,32 @@ Given two or more render passes we can record them separately in multiple thread
 
 Note that in order to achieve a good improvement the workload must be similiar for all the passes so that all the threads receive equal amounts of work. In this sample the same scene is rendered once for each render pass but from different view points. 
 
-One way to use multi-threading is to create a separate primary level command buffer for each render pass. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
+The way to use multi-threading with multiple render passes is to create a separate primary level command buffer for each of them. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
 
-This however adds a little overhead. In order to improve it we can use secondary level command buffers instead. This requires to follow the following rules (according to the Vulkan Spec):
-* Primary command buffer must be in the [pending or executable state](https://www.khronos.org/registry/vulkan/specs/1.2-extensions//man/html/vkCmdExecuteCommands.html) when ``vkCmdExecuteCommands`` is called
-* Render pass can begin only in [primary](https://www.khronos.org/registry/vulkan/specs/1.2-extensions//man/html/vkCmdBeginRenderPass.html) command buffer
+When using this method for multi-threading, general recommendations should be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
 
-The way to achieve this is to record all the secondary command buffers in multiple threads, then start recording the primary command buffer. Inside of each render pass a secondary command buffer is specified using ``vkCmdExecuteCommands``.
-
-When using any of these methods for multi-threading general recommendations should be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
-
-This sample compares different approaches of recording multiple render passes. Radio buttons allow to choose one of 3 modes.
-
-With multi-threading disabled all the commands are recorded into single primary level command buffer.
-
-The other two options ("Primary buffers" and "Secondary buffers") correspond to one of the approaches described above.
+This sample shows the difference between recording both render passes into a single command buffer in one thread and using the method described above.
 
 Below are screenshots of the sample running on a phone with a Mali G72 GPU:
 
-![Single Thread](images/single_thread.png)
+![Single Thread](images/multithreading_off.png)
 
-Using two threads gives a 8.8ms improvement:
+Using two threads gives a 10.5ms frame time improvement and CPU cycles show an increase in CPU utilization:
 
-![Primary Command Buffers](images/primary_buffers.png)
-
-And using secondary command buffers helps to save 40M CPU cycles each second and reduce frame time by 5%:
-
-![Secondary Command Buffers](images/secondary_buffers.png)
+![Primary Command Buffers](images/multithreading_on.png)
 
 [Android Profiler](https://developer.android.com/studio/profile/android-profiler) can be useful to see if the process of command buffers recording takes a significant part of frame time (and therefore frame time can be noticeably reduced by multi-threading this process).
 
-![Android Profiler: Allocate and Free](images/android_profiler_secondary_buffers.png)
+![Android Profiler Capture](images/android_profiler.png)
 _Android Profiler capture_
 
 In this particular case application is CPU bound and multi-threading shows a good performance increase. The table below compares total time and impact of the function which records command buffers.
 
 Mode | Commands recording time (ms) | Contribution
 ---|---|---|---
-No multi-threading | 9.24 | 93 %
-Primary buffers | 7.5 | 76 %
-Secondary buffers | 7.12 | 72 %
-_Total capture duration is 9.916ms in all 3 cases_
+No multi-threading | 9.85 | 98.2 %
+Multi-threading | 8.63 | 86 %
+_Total capture duration is 10.03ms in both cases_
 
 ## Further reading
 
@@ -92,7 +78,7 @@ _Total capture duration is 9.916ms in all 3 cases_
 
 **Do**
 
-* Use secondary level command buffers instead of submitting multiple primary command buffers per frame.
+* Use multi-threading for command buffer recording if possible.
 
 **Avoid**
 
