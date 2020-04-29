@@ -68,6 +68,7 @@ Mode | Commands recording time (ms) | Contribution
 ---|---|---
 No multi-threading | 9.85 | 98.2 %
 Multi-threading | 8.63 | 86 %
+
 _Total capture duration is 10.03ms in both cases_
 
 ## Further reading
