@@ -65,7 +65,7 @@ _Android Profiler capture_
 In this particular case application is CPU bound and multi-threading shows a good performance increase. The table below compares total time and impact of the function which records command buffers.
 
 Mode | Commands recording time (ms) | Contribution
----|---|---|---
+---|---|---
 No multi-threading | 9.85 | 98.2 %
 Multi-threading | 8.63 | 86 %
 _Total capture duration is 10.03ms in both cases_
