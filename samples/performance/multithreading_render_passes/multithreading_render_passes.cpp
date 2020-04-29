@@ -147,12 +147,14 @@ void MultithreadingRenderPasses::update(float delta_time)
 
 void MultithreadingRenderPasses::draw_gui()
 {
-	gui->show_options_window([this]() {
-		ImGui::AlignTextToFramePadding();
-		ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
+	gui->show_options_window(
+	    [this]() {
+		    ImGui::AlignTextToFramePadding();
+		    ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4f);
 
-		ImGui::Checkbox("Multi-threading", &gui_multithreading_enabled);
-	});
+		    ImGui::Checkbox("Multi-threading", &gui_multithreading_enabled);
+	    },
+	    1);
 }
 
 std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buffers(vkb::CommandBuffer &main_command_buffer)
