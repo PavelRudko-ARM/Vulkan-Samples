@@ -21,7 +21,7 @@
 
 ## Overview
 
-In some cases multiple stages of frame rendering can't be performed in a single render pass. This sample shows how multi-threading can help to boost performance when using multiple render passes to render a single frame. 
+Ideally you render all stages of your frame in a single render pass. However, in some cases different stages can't be performed in the same render pass. This sample shows how multi-threading can help to boost performance when using multiple render passes to render a single frame. 
 
 ## Using multiple render passes
 
@@ -29,7 +29,7 @@ In some cases multiple stages of frame rendering can't be performed in a single 
 
  The first render pass is used to render a shadowmap. It contains only depth values and represents the scene as viewed from the light position.
 
- The second pass renders the actual scene from the camera point of view and uses the shadowmap from the previous pass. When light calculation is performed in fragment shader the depth value from shadow map is used to determine whether the fragment is ocludded (and therefore is in shadow) or not.
+ The second pass renders the actual scene from the camera point of view and uses the shadowmap from the previous pass. When the light calculation is performed in the fragment shader, the depth value from the shadow map is used to determine whether the fragment is occluded from the light (and therefore is in shadow) or not.
 
  The diagram below shows this two step process:
 
@@ -39,13 +39,13 @@ In some cases multiple stages of frame rendering can't be performed in a single 
 
 ## The Multi-threading Render Passes Sample
 
-Given two or more render passes we can record them separately in multiple threads. 
+If we have two or more render passes we can record them separately in different threads. 
 
-Note that in order to achieve a good improvement the workload must be similiar for all the passes so that all the threads receive equal amounts of work. In this sample the same scene is rendered once for each render pass but from different view points. 
+Note that in order to achieve a significant improvement the workload must be similiar for all the passes, so that all the threads receive equal amounts of work. In this sample the same scene is rendered once for each render pass but from different viewpoints. 
 
 The way to use multi-threading with multiple render passes is to create a separate primary level command buffer for each of them. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
 
-When using this method for multi-threading, general recommendations should be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
+When using this method for multi-threading, general recommendations should still be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
 
 This sample shows the difference between recording both render passes into a single command buffer in one thread and using the method described above.
 
@@ -57,7 +57,7 @@ Using two threads gives a 10.5ms frame time improvement and CPU cycles show an i
 
 ![Primary Command Buffers](images/multithreading_on.png)
 
-[Android Profiler](https://developer.android.com/studio/profile/android-profiler) can be useful to see if the process of command buffers recording takes a significant part of frame time (and therefore frame time can be noticeably reduced by multi-threading this process).
+[Android Profiler](https://developer.android.com/studio/profile/android-profiler) can be useful to see if the process of command buffers recording takes a significant part of frame time. If this is the case then frame time can be noticeably reduced by multi-threading this process.
 
 ![Android Profiler Capture](images/android_profiler.png)
 _Android Profiler capture_
@@ -87,7 +87,7 @@ _Total capture duration is 10.03ms in both cases_
 
 **Impact**
 
-* The impact highly depends on the size of the scene and complexity of drawing commands recording.
+* You can get a significant impact on frametime for a large scene with complex drawing commands recording.
 
 **Debugging**
 
