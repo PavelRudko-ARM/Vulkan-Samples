@@ -159,8 +159,7 @@ void MultithreadingRenderPasses::draw_gui()
 
 std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buffers(vkb::CommandBuffer &main_command_buffer)
 {
-	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
-	const auto &queue      = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
+	const auto &queue = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
 	std::vector<vkb::CommandBuffer *> command_buffers;
 
@@ -190,13 +189,12 @@ std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buf
 
 void MultithreadingRenderPasses::record_separate_primary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer)
 {
-	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
-	const auto &queue      = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
+	const auto &queue = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
 	std::vector<std::future<void>> cmd_buf_futures;
 
 	auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
-	                                                                                        reset_mode,
+	                                                                                        vkb::CommandBuffer::ResetMode::ResetPool,
 	                                                                                        VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 	                                                                                        1);
 

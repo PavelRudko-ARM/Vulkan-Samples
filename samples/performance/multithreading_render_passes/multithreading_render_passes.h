@@ -48,8 +48,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	void draw_gui() override;
 
 	/**
-     * @brief This subpass is responsible for rendering a shadowmap
-     */
+	 * @brief This subpass is responsible for rendering a shadowmap
+	 */
 	class ShadowSubpass : public vkb::GeometrySubpass
 	{
 	  public:
@@ -68,9 +68,9 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	};
 
 	/**
-     * @brief This subpass is responsible for rendering a Scene
-     *		  It implements a custom draw function which passes shadowmap and light matrix
-     */
+	 * @brief This subpass is responsible for rendering a Scene
+	 *		  It implements a custom draw function which passes shadowmap and light matrix
+	 */
 	class MainSubpass : public vkb::ForwardSubpass
 	{
 	  public:
@@ -100,13 +100,13 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 	std::unique_ptr<vkb::RenderTarget> create_shadow_render_target(uint32_t size);
 
 	/**
-     * @return Shadow render pass which should run first
-     */
+	 * @return Shadow render pass which should run first
+	 */
 	std::unique_ptr<vkb::RenderPipeline> create_shadow_renderpass();
 
 	/**
-     * @return Main render pass which should run second
-     */
+	 * @return Main render pass which should run second
+	 */
 	std::unique_ptr<vkb::RenderPipeline> create_main_renderpass();
 
 	const uint32_t SHADOWMAP_RESOLUTION{1024};
@@ -150,8 +150,8 @@ class MultithreadingRenderPasses : public vkb::VulkanSample
 
 	/**
 	 * @brief Record drawing commands using the chosen strategy
-     * @param main_command_buffer Already allocated command buffer for the main pass
-     * @return Single or multiple recorded command buffers
+	 * @param main_command_buffer Already allocated command buffer for the main pass
+	 * @return Single or multiple recorded command buffers
 	 */
 	std::vector<vkb::CommandBuffer *> record_command_buffers(vkb::CommandBuffer &main_command_buffer);
 
