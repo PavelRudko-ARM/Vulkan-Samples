@@ -69,7 +69,7 @@ set(ORDER_LIST
     "descriptor_management"
     "render_passes"
     "msaa"
-    "render_subpasses"
+    "subpasses"
     "pipeline_barriers"
     "wait_idle"
     "layout_transitions"
