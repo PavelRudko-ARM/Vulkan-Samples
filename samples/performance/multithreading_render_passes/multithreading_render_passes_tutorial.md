@@ -41,7 +41,7 @@ Ideally you render all stages of your frame in a single render pass. However, in
 
 If we have two or more render passes we can record them separately in different threads. 
 
-Note that in order to achieve a significant improvement the workload must be similiar for all the passes, so that all the threads receive equal amounts of work. In this sample the same scene is rendered once for each render pass but from different viewpoints. 
+Note that the more similar is the workload for all the passes, the more performance improvement you can get by splitting the work between multiple threads. In this sample the same scene is rendered once in each render pass but from different viewpoints and with different complexity of commands recording (shadow pass requires less descriptor and resources setup for each frame).
 
 The way to use multi-threading with multiple render passes is to create a separate primary level command buffer for each of them. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
 
@@ -62,7 +62,7 @@ Using two threads gives a 10.5ms frame time improvement and CPU cycles show an i
 ![Android Profiler Capture](images/android_profiler.png)
 _Android Profiler capture_
 
-In this particular case application is CPU bound and multi-threading shows a good performance increase. The table below compares total time and impact of the function which records command buffers.
+In this particular case application is CPU bound and multi-threading shows a good performance increase. In the table below you can see how much time was spent on the C++ function which does command buffer recording and which part of the total capture time it takes.
 
 Mode | Commands recording time (ms) | Contribution
 ---|---|---
