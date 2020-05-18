@@ -85,6 +85,19 @@ void CommandBuffer::clear(VkClearAttachment attachment, VkClearRect rect)
 
 VkResult CommandBuffer::begin(VkCommandBufferUsageFlags flags, CommandBuffer *primary_cmd_buf)
 {
+	if (level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+	{
+		assert(primary_cmd_buf && "A primary command buffer pointer must be provided when calling begin from a secondary one");
+		auto render_pass_binding = primary_cmd_buf->get_current_render_pass();
+
+		return begin(flags, render_pass_binding.render_pass, render_pass_binding.framebuffer, primary_cmd_buf->get_current_subpass_index());
+	}
+
+	return begin(flags, nullptr, nullptr, 0);
+}
+
+VkResult CommandBuffer::begin(VkCommandBufferUsageFlags flags, const RenderPass *render_pass, const Framebuffer *framebuffer, uint32_t subpass_index)
+{
 	assert(!is_recording() && "Command buffer is already recording, please call end before beginning again");
 
 	if (is_recording())
@@ -106,15 +119,14 @@ VkResult CommandBuffer::begin(VkCommandBufferUsageFlags flags, CommandBuffer *pr
 
 	if (level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
 	{
-		assert(primary_cmd_buf && "A primary command buffer pointer must be provided when calling begin from a secondary one");
+		assert((render_pass && framebuffer) && "Render pass and framebuffer must be provided when calling begin from a secondary one");
 
-		auto render_pass_binding        = primary_cmd_buf->get_current_render_pass();
-		current_render_pass.render_pass = render_pass_binding.render_pass;
-		current_render_pass.framebuffer = render_pass_binding.framebuffer;
+		current_render_pass.render_pass = render_pass;
+		current_render_pass.framebuffer = framebuffer;
 
 		inheritance.renderPass  = current_render_pass.render_pass->get_handle();
 		inheritance.framebuffer = current_render_pass.framebuffer->get_handle();
-		inheritance.subpass     = primary_cmd_buf->get_current_subpass_index();
+		inheritance.subpass     = subpass_index;
 
 		begin_info.pInheritanceInfo = &inheritance;
 	}
@@ -160,8 +172,16 @@ void CommandBuffer::begin_render_pass(const RenderTarget &render_target, const s
 
 		++subpass_info_it;
 	}
-	current_render_pass.render_pass = &get_device().get_resource_cache().request_render_pass(render_target.get_attachments(), load_store_infos, subpass_infos);
-	current_render_pass.framebuffer = &get_device().get_resource_cache().request_framebuffer(render_target, *current_render_pass.render_pass);
+	auto &render_pass = get_device().get_resource_cache().request_render_pass(render_target.get_attachments(), load_store_infos, subpass_infos);
+	auto &framebuffer = get_device().get_resource_cache().request_framebuffer(render_target, render_pass);
+
+	begin_render_pass(render_target, render_pass, framebuffer, clear_values, contents);
+}
+
+void CommandBuffer::begin_render_pass(const RenderTarget &render_target, const RenderPass &render_pass, const Framebuffer &framebuffer, const std::vector<VkClearValue> &clear_values, VkSubpassContents contents)
+{
+	current_render_pass.render_pass = &render_pass;
+	current_render_pass.framebuffer = &framebuffer;
 
 	// Begin render pass
 	VkRenderPassBeginInfo begin_info{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
