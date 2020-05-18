@@ -183,9 +183,9 @@ std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buf
 	auto use_multithreading = multithreading_mode != static_cast<int>(MultithreadingMode::None);
 	shadow_subpass->set_thread_index(use_multithreading ? 1 : 0);
 
-	if (use_multithreading && thread_pool.size() < 2)
+	if (use_multithreading && thread_pool.size() < 1)
 	{
-		thread_pool.resize(2);
+		thread_pool.resize(1);
 	}
 
 	switch (multithreading_mode)
@@ -213,38 +213,29 @@ void MultithreadingRenderPasses::record_separate_primary_command_buffers(std::ve
 	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
 	const auto &queue      = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
-	std::vector<std::future<void>> cmd_buf_futures;
-
 	auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
 	                                                                                        reset_mode,
 	                                                                                        VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 	                                                                                        1);
 
 	// Recording shadow command buffer
-	auto fut = thread_pool.push(
+	auto shadow_buffer_future = thread_pool.push(
 	    [this, &shadow_command_buffer](size_t thread_id) {
 		    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		    draw_shadow_pass(shadow_command_buffer);
 		    shadow_command_buffer.end();
 	    });
-	cmd_buf_futures.push_back(std::move(fut));
 
 	// Recording scene command buffer
-	fut = thread_pool.push(
-	    [this, &main_command_buffer](size_t thread_id) {
-		    main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-		    draw_main_pass(main_command_buffer);
-		    main_command_buffer.end();
-	    });
-	cmd_buf_futures.push_back(std::move(fut));
+	main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	draw_main_pass(main_command_buffer);
+	main_command_buffer.end();
 
 	command_buffers.push_back(&shadow_command_buffer);
 	command_buffers.push_back(&main_command_buffer);
 
-	for (auto &fut : cmd_buf_futures)
-	{
-		fut.get();
-	}
+	//Wait for recording
+	shadow_buffer_future.get();
 }
 
 void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::vector<vkb::CommandBuffer *> &command_buffers, vkb::CommandBuffer &main_command_buffer)
@@ -272,35 +263,25 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	auto &scene_render_pass   = get_render_pass(scene_render_target, *main_render_pipeline);
 	auto &scene_framebuffer   = get_device().get_resource_cache().request_framebuffer(scene_render_target, scene_render_pass);
 
-	std::vector<std::future<void>> cmd_buf_futures;
-
 	// Recording shadow command buffer
-	auto fut = thread_pool.push(
+	auto shadow_buffer_future = thread_pool.push(
 	    [this, &shadow_command_buffer, &shadow_render_pass, &shadow_framebuffer](size_t thread_id) {
 		    shadow_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &shadow_render_pass, &shadow_framebuffer, 0);
 		    draw_shadow_pass(shadow_command_buffer);
 		    shadow_command_buffer.end();
 	    });
-	cmd_buf_futures.push_back(std::move(fut));
 
 	// Recording scene command buffer
-	fut = thread_pool.push(
-	    [this, &scene_command_buffer, &scene_render_pass, &scene_framebuffer](size_t thread_id) {
-		    vkb::ColorBlendState scene_color_blend_state;
-		    scene_color_blend_state.attachments.resize(scene_render_pass.get_color_output_count(0));
+	vkb::ColorBlendState scene_color_blend_state;
+	scene_color_blend_state.attachments.resize(scene_render_pass.get_color_output_count(0));
 
-		    scene_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &scene_render_pass, &scene_framebuffer, 0);
-		    scene_command_buffer.set_color_blend_state(scene_color_blend_state);
-		    draw_main_pass(scene_command_buffer);
-		    scene_command_buffer.end();
-	    });
-	cmd_buf_futures.push_back(std::move(fut));
+	scene_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &scene_render_pass, &scene_framebuffer, 0);
+	scene_command_buffer.set_color_blend_state(scene_color_blend_state);
+	draw_main_pass(scene_command_buffer);
+	scene_command_buffer.end();
 
 	//Wait for recording
-	for (auto &fut : cmd_buf_futures)
-	{
-		fut.get();
-	}
+	shadow_buffer_future.get();
 
 	//Recording main command buffer
 	main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
