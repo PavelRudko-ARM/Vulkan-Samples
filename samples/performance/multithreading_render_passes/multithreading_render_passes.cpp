@@ -52,7 +52,7 @@ bool MultithreadingRenderPasses::prepare(vkb::Platform &platform)
 		shadow_render_targets[i] = create_shadow_render_target(SHADOWMAP_RESOLUTION);
 	}
 
-	load_scene("scenes/bonza/Bonza4x.gltf");
+	load_scene("scenes/bonza/Bonza.gltf");
 
 	scene->clear_components<vkb::sg::Light>();
 	auto &light           = vkb::add_directional_light(*scene, glm::quat({glm::radians(-30.0f), glm::radians(175.0f), glm::radians(0.0f)}));
@@ -150,6 +150,7 @@ void MultithreadingRenderPasses::update(float delta_time)
 void MultithreadingRenderPasses::draw_gui()
 {
 	const bool landscape = reinterpret_cast<vkb::sg::PerspectiveCamera *>(camera)->get_aspect_ratio() > 1.0f;
+	uint32_t   lines     = landscape ? 2 : 4;
 
 	gui->show_options_window(
 	    [this, landscape]() {
@@ -169,7 +170,7 @@ void MultithreadingRenderPasses::draw_gui()
 		    }
 		    ImGui::RadioButton("Secondary Buffers", &multithreading_mode, static_cast<int>(MultithreadingMode::SecondaryCommandBuffers));
 	    },
-	    2);
+	    lines);
 }
 
 std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buffers(vkb::CommandBuffer &main_command_buffer)
@@ -290,6 +291,8 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	main_command_buffer.execute_commands(shadow_command_buffer);
 	main_command_buffer.end_render_pass();
 
+	record_image_memory_barriers(main_command_buffer);
+
 	main_command_buffer.begin_render_pass(scene_render_target, scene_render_pass, scene_framebuffer, main_render_pipeline->get_clear_value(), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 	main_command_buffer.execute_commands(scene_command_buffer);
 	main_command_buffer.end_render_pass();
@@ -299,25 +302,7 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	command_buffers.push_back(&main_command_buffer);
 }
 
-void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_buffer)
-{
-	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
-	auto &shadowmap_extent     = shadow_render_target.get_extent();
-
-	set_viewport_and_scissor(command_buffer, shadowmap_extent);
-
-	if (command_buffer.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
-	{
-		shadow_render_pipeline->get_active_subpass()->draw(command_buffer);
-	}
-	else
-	{
-		shadow_render_pipeline->draw(command_buffer, shadow_render_target);
-		command_buffer.end_render_pass();
-	}
-}
-
-void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buffer)
+void MultithreadingRenderPasses::record_image_memory_barriers(vkb::CommandBuffer &command_buffer)
 {
 	auto &views = render_context->get_active_frame().get_render_target().get_views();
 
@@ -359,7 +344,28 @@ void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buff
 
 		command_buffer.image_memory_barrier(shadowmap, memory_barrier);
 	}
+}
 
+void MultithreadingRenderPasses::draw_shadow_pass(vkb::CommandBuffer &command_buffer)
+{
+	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
+	auto &shadowmap_extent     = shadow_render_target.get_extent();
+
+	set_viewport_and_scissor(command_buffer, shadowmap_extent);
+
+	if (command_buffer.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+	{
+		shadow_render_pipeline->get_active_subpass()->draw(command_buffer);
+	}
+	else
+	{
+		shadow_render_pipeline->draw(command_buffer, shadow_render_target);
+		command_buffer.end_render_pass();
+	}
+}
+
+void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buffer)
+{
 	auto &render_target = render_context->get_active_frame().get_render_target();
 	auto &extent        = render_target.get_extent();
 
@@ -373,6 +379,7 @@ void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buff
 	}
 	else
 	{
+		record_image_memory_barriers(command_buffer);
 		main_render_pipeline->draw(command_buffer, render_target);
 	}
 
