@@ -41,35 +41,27 @@ Ideally you render all stages of your frame in a single render pass. However, in
 
 If we have two or more render passes we can record them separately in different threads. 
 
-Note that the more similar is the workload for all the passes, the more performance improvement you can get by splitting the work between multiple threads. In this sample the same scene is rendered once in each render pass but from different viewpoints and with different complexity of commands recording (shadow pass requires less descriptor and resources setup for each frame).
+Note that the more similar is the workload for all the passes, the more performance improvement you can get by splitting the work between multiple threads. In this sample the same scene is rendered once in each render pass but from different viewpoints and with different complexity of commands recording (shadow pass requires less descriptor and resources setup for each frame). That means the workloads are not fully equal, but it is still worth delegating part of the work to another thread, and the increase in performance is noticeable.
 
-The way to use multi-threading with multiple render passes is to create a separate primary level command buffer for each of them. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
+One way to use multi-threading with multiple render passes is to create a separate primary level command buffer for each of them. In this case command buffers can be recorded independently and then submitted to the queue all at once using ``vkQueueSubmit``.
 
-When using this method for multi-threading, general recommendations should still be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
+A better approach is to use secondary level command buffers, which helps to reduce the overhead and get even better performance. First, both of the passes are recorded into two separate secondary command buffers using two threads. Then, we can just reference them in the primary command buffer via ``vkCmdExecuteCommands``.
 
-This sample shows the difference between recording both render passes into a single command buffer in one thread and using the method described above.
+When using both of these methods for multi-threading, general recommendations should still be taken into account (see [Multi-threaded-recording](https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md#Multi-threaded-recording)).
+
+This sample shows the difference between recording both render passes into a single command buffer in one thread and using the methods described above.
 
 Below are screenshots of the sample running on a phone with a Mali G72 GPU:
 
-![Single Thread](images/multithreading_off.png)
+![Single Thread](images/no_multi_threading.png)
 
-Using two threads gives a 10.5ms frame time improvement and CPU cycles show an increase in CPU utilization:
+Using two threads gives a 10ms frame time improvement and CPU cycles show an increase in CPU utilization:
 
-![Primary Command Buffers](images/multithreading_on.png)
+![Primary Command Buffers](images/primary_command_buffers.png)
 
-[Android Profiler](https://developer.android.com/studio/profile/android-profiler) can be useful to see if the process of command buffers recording takes a significant part of frame time. If this is the case then frame time can be noticeably reduced by multi-threading this process.
+With secondary command buffers you can see a further drop in frame time.
 
-![Android Profiler Capture](images/android_profiler.png)
-_Android Profiler capture_
-
-In this particular case application is CPU bound and multi-threading shows a good performance increase. In the table below you can see how much time was spent on the C++ function which does command buffer recording and which part of the total capture time it takes.
-
-Mode | Commands recording time (ms) | Contribution
----|---|---
-No multi-threading | 9.85 | 98.2 %
-Multi-threading | 8.63 | 86 %
-
-_Total capture duration is 10.03ms in both cases_
+![Secondary Command Buffers](images/secondary_command_buffers.png)
 
 ## Further reading
 
@@ -80,6 +72,7 @@ _Total capture duration is 10.03ms in both cases_
 **Do**
 
 * Use multi-threading for command buffer recording if possible.
+* Prefer using secondary command buffers over submitting multiple command buffers at once.
 
 **Avoid**
 
