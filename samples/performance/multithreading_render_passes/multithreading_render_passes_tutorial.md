@@ -63,6 +63,14 @@ With secondary command buffers you can see a further drop in frame time.
 
 ![Secondary Command Buffers](images/secondary_command_buffers.png)
 
+## Profiling
+
+Android Profiler can help to see how threads are utilized. Flame Chart shows how much time was spent for each function execution during a particular timeframe. In this particular example total contribution of command buffers recording in the main thread is 9.98 seconds within a 10 seconds capture with multi-threading off. With multi-threading on it remains almost the same (9.95s), but in the second thread 5.7s was spent for shadow pass recording. That means, two threads perform the same amount of work in 10s as one thread in more than 15.7 seconds and we should expect approximately 1.57 times better performance. And indeed, in debug build, which was used for profiling, frame time is decreased in 1.57 times using multi-threding.
+
+In the screenshot below you can see the Flame Chart. Also the timeline shows when multi-threading was enabled and the second thread stopped being idle.
+
+![Android Studio Capture](images/android_studio_capture.png)
+
 ## Further reading
 
 [Command buffer usage and multi-threaded recording](../command_buffer_usage/command_buffer_usage_tutorial.md)
