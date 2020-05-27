@@ -141,7 +141,6 @@ option(ENABLE_GLSLANG_BINARIES OFF)
 option(ENABLE_HLSL OFF)
 option(ENABLE_OPT OFF)
 option(BUILD_TESTING OFF)
-option(BUILD_EXTERNAL OFF)
 
 add_subdirectory(glslang)
 
