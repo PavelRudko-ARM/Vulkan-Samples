@@ -107,9 +107,9 @@ class CommandBuffer
 	 *        If it is a secondary command buffer, pointers to the
 	 *        render pass and framebuffer as well as subpass index must be provided
 	 * @param flags Usage behavior for the command buffer
-	 * @param render_pass (optional)
-	 * @param framebuffer (optional)
-	 * @param subpass_index (optional)
+	 * @param render_pass
+	 * @param framebuffer
+	 * @param subpass_index
 	 * @return Whether it succeded or not
 	 */
 	VkResult begin(VkCommandBufferUsageFlags flags, const RenderPass *render_pass, const Framebuffer *framebuffer, uint32_t subpass_index);
