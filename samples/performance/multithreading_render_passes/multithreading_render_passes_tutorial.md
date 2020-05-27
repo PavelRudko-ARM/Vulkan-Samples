@@ -65,7 +65,7 @@ With secondary command buffers you can see a further drop in frame time.
 
 ## Profiling
 
-Android Profiler can help to see how threads are utilized. Flame Chart shows how much time was spent for each function execution during a particular timeframe. In this particular example total contribution of command buffers recording in the main thread is 9.98 seconds within a 10 seconds capture with multi-threading off. With multi-threading on it remains almost the same (9.95s), but in the second thread 5.7s was spent for shadow pass recording. That means, two threads perform the same amount of work in 10s as one thread in more than 15.7 seconds and we should expect approximately 1.57 times better performance. And indeed, in debug build, which was used for profiling, frame time is decreased in 1.57 times using multi-threding.
+Android Profiler can help to see how threads are utilized. Flame Chart shows how much time was spent for each function execution during a particular timeframe. In this particular example total contribution of command buffers recording in the main thread is 9.98 seconds within a 10 seconds capture with multi-threading disabled. With multi-threading enabled it remains almost the same (9.95s), but in the second thread 5.7s was spent for shadow pass recording. That means, two threads perform the same amount of work in 10s as one thread in more than 15.7 seconds and we should expect approximately 1.57 times better performance. And indeed, in debug build, which was used for profiling, frame time is decreased in 1.57 times using multi-threding.
 
 In the screenshot below you can see the Flame Chart. Also the timeline shows when multi-threading was enabled and the second thread stopped being idle.
 
@@ -80,7 +80,7 @@ In the screenshot below you can see the Flame Chart. Also the timeline shows whe
 **Do**
 
 * Use multi-threading for command buffer recording if possible.
-* Prefer using secondary command buffers over submitting multiple command buffers at once.
+* Prefer using secondary command buffers over submitting multiple primary command buffers to the queue at once.
 
 **Avoid**
 
