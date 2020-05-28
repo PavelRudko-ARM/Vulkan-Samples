@@ -260,11 +260,11 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	// Same framebuffer and render pass should be specified in the inheritance info for secondary command buffers
 	// and vkCmdBeginRenderPass for primary command buffers
 	auto &shadow_render_target = *shadow_render_targets[render_context->get_active_frame_index()];
-	auto &shadow_render_pass   = get_render_pass(shadow_render_target, *shadow_render_pipeline);
+	auto &shadow_render_pass   = main_command_buffer.get_render_pass(shadow_render_target, shadow_render_pipeline->get_load_store(), shadow_render_pipeline->get_subpasses());
 	auto &shadow_framebuffer   = get_device().get_resource_cache().request_framebuffer(shadow_render_target, shadow_render_pass);
 
 	auto &scene_render_target = render_context->get_active_frame().get_render_target();
-	auto &scene_render_pass   = get_render_pass(scene_render_target, *main_render_pipeline);
+	auto &scene_render_pass   = main_command_buffer.get_render_pass(scene_render_target, main_render_pipeline->get_load_store(), main_render_pipeline->get_subpasses());
 	auto &scene_framebuffer   = get_device().get_resource_cache().request_framebuffer(scene_render_target, scene_render_pass);
 
 	// Recording shadow command buffer
@@ -395,28 +395,6 @@ void MultithreadingRenderPasses::draw_main_pass(vkb::CommandBuffer &command_buff
 	{
 		command_buffer.end_render_pass();
 	}
-}
-
-vkb::RenderPass &MultithreadingRenderPasses::get_render_pass(const vkb::RenderTarget &render_target, vkb::RenderPipeline &render_pipeline)
-{
-	auto &subpasses        = render_pipeline.get_subpasses();
-	auto &load_store_infos = render_pipeline.get_load_store();
-
-	std::vector<vkb::SubpassInfo> subpass_infos(subpasses.size());
-	auto                          subpass_info_it = subpass_infos.begin();
-	for (auto &subpass : subpasses)
-	{
-		subpass_info_it->input_attachments                = subpass->get_input_attachments();
-		subpass_info_it->output_attachments               = subpass->get_output_attachments();
-		subpass_info_it->color_resolve_attachments        = subpass->get_color_resolve_attachments();
-		subpass_info_it->disable_depth_stencil_attachment = subpass->get_disable_depth_stencil_attachment();
-		subpass_info_it->depth_stencil_resolve_mode       = subpass->get_depth_stencil_resolve_mode();
-		subpass_info_it->depth_stencil_resolve_attachment = subpass->get_depth_stencil_resolve_attachment();
-
-		++subpass_info_it;
-	}
-
-	return get_device().get_resource_cache().request_render_pass(render_target.get_attachments(), load_store_infos, subpass_infos);
 }
 
 MultithreadingRenderPasses::MainSubpass::MainSubpass(vkb::RenderContext &                             render_context,
