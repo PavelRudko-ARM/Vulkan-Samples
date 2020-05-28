@@ -239,6 +239,8 @@ class CommandBuffer
 	 */
 	VkResult reset(ResetMode reset_mode);
 
+	RenderPass &get_render_pass(const vkb::RenderTarget &render_target, const std::vector<LoadStoreInfo> &load_store_infos, const std::vector<std::unique_ptr<Subpass>> &subpasses);
+
 	const VkCommandBufferLevel level;
 
   private:
