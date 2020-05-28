@@ -180,7 +180,7 @@ std::vector<vkb::CommandBuffer *> MultithreadingRenderPasses::record_command_buf
 
 	std::vector<vkb::CommandBuffer *> command_buffers;
 
-	//Resources are requested from pools for thread #1 in shadow pass if multithreading is used
+	// Resources are requested from pools for thread #1 in shadow pass if multithreading is used
 	auto use_multithreading = multithreading_mode != static_cast<int>(MultithreadingMode::None);
 	shadow_subpass->set_thread_index(use_multithreading ? 1 : 0);
 
@@ -214,6 +214,7 @@ void MultithreadingRenderPasses::record_separate_primary_command_buffers(std::ve
 	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
 	const auto &queue      = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
+	// Shadow pass will be recorded in thread with id 1
 	auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
 	                                                                                        reset_mode,
 	                                                                                        VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -235,7 +236,7 @@ void MultithreadingRenderPasses::record_separate_primary_command_buffers(std::ve
 	command_buffers.push_back(&shadow_command_buffer);
 	command_buffers.push_back(&main_command_buffer);
 
-	//Wait for recording
+	// Wait for recording
 	shadow_buffer_future.get();
 }
 
@@ -244,18 +245,20 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	auto        reset_mode = vkb::CommandBuffer::ResetMode::ResetPool;
 	const auto &queue      = device->get_queue_by_flags(VK_QUEUE_GRAPHICS_BIT, 0);
 
+	// Main pass will be recorded in thread with id 0
 	auto &scene_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
 	                                                                                       reset_mode,
 	                                                                                       VK_COMMAND_BUFFER_LEVEL_SECONDARY,
 	                                                                                       0);
 
+	// Shadow pass will be recorded in thread with id 1
 	auto &shadow_command_buffer = render_context->get_active_frame().request_command_buffer(queue,
 	                                                                                        reset_mode,
 	                                                                                        VK_COMMAND_BUFFER_LEVEL_SECONDARY,
 	                                                                                        1);
 
-	//Same framebuffer and render pass should be specified in the inheritance info for secondary command buffers
-	//and vkCmdBeginRenderPass for primary command buffers
+	// Same framebuffer and render pass should be specified in the inheritance info for secondary command buffers
+	// and vkCmdBeginRenderPass for primary command buffers
 	auto &shadow_render_target = *shadow_render_targets[render_context->get_active_frame_index()];
 	auto &shadow_render_pass   = get_render_pass(shadow_render_target, *shadow_render_pipeline);
 	auto &shadow_framebuffer   = get_device().get_resource_cache().request_framebuffer(shadow_render_target, shadow_render_pass);
@@ -281,10 +284,10 @@ void MultithreadingRenderPasses::record_separate_secondary_command_buffers(std::
 	draw_main_pass(scene_command_buffer);
 	scene_command_buffer.end();
 
-	//Wait for recording
+	// Wait for recording
 	shadow_buffer_future.get();
 
-	//Recording main command buffer
+	// Recording main command buffer
 	main_command_buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	main_command_buffer.begin_render_pass(shadow_render_target, shadow_render_pass, shadow_framebuffer, shadow_render_pipeline->get_clear_value(), VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
@@ -457,11 +460,13 @@ void MultithreadingRenderPasses::MainSubpass::draw(vkb::CommandBuffer &command_b
 	shadow_uniform.shadowmap_projection_matrix = vkb::vulkan_style_projection(shadowmap_camera.get_projection()) * shadowmap_camera.get_view();
 
 	auto &shadow_render_target = *shadow_render_targets[get_render_context().get_active_frame_index()];
+	// Bind the shadowmap texture to the proper set nd binding in shader
 	command_buffer.bind_image(shadow_render_target.get_views().at(0), *shadowmap_sampler, 0, 5, 0);
 
 	auto &                render_frame  = get_render_context().get_active_frame();
 	vkb::BufferAllocation shadow_buffer = render_frame.allocate_buffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(glm::mat4));
 	shadow_buffer.update(shadow_uniform);
+	// Bind the shadowmap uniform to the proper set nd binding in shader
 	command_buffer.bind_buffer(shadow_buffer.get_buffer(), shadow_buffer.get_offset(), shadow_buffer.get_size(), 0, 6, 0);
 
 	ForwardSubpass::draw(command_buffer);
@@ -478,9 +483,9 @@ MultithreadingRenderPasses::ShadowSubpass::ShadowSubpass(vkb::RenderContext &ren
 
 void MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_state(vkb::CommandBuffer &command_buffer, VkFrontFace front_face, bool double_sided_material)
 {
-	//Enabling depth bias to get rid of self-shadowing artifacts
-	//Depth bias leterally "pushes" slightly all the primitives further away from the camera taking their slope into account
-	//It helps to avoid precision related problems while doing depth comparisons in the final pass
+	// Enabling depth bias to get rid of self-shadowing artifacts
+	// Depth bias leterally "pushes" slightly all the primitives further away from the camera taking their slope into account
+	// It helps to avoid precision related problems while doing depth comparisons in the final pass
 	vkb::RasterizationState rasterization_state{};
 	rasterization_state.front_face        = front_face;
 	rasterization_state.depth_bias_enable = VK_TRUE;
@@ -500,7 +505,7 @@ void MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_state(vkb::Comm
 
 vkb::PipelineLayout &MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline_layout(vkb::CommandBuffer &command_buffer, const std::vector<vkb::ShaderModule *> &shader_modules)
 {
-	//Only vertex shader is needed in the shadow subpass
+	// Only vertex shader is needed in the shadow subpass
 	auto vertex_shader_module = shader_modules.at(0);
 
 	vertex_shader_module->set_resource_mode(vkb::ShaderResourceMode::Dynamic, "GlobalUniform");
@@ -510,7 +515,7 @@ vkb::PipelineLayout &MultithreadingRenderPasses::ShadowSubpass::prepare_pipeline
 
 void MultithreadingRenderPasses::ShadowSubpass::prepare_push_constants(vkb::CommandBuffer &command_buffer, vkb::sg::SubMesh &sub_mesh)
 {
-	//No push constants are used the in shadow pass
+	// No push constants are used the in shadow pass
 	return;
 }
 
