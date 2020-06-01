@@ -35,7 +35,7 @@ Ideally you render all stages of your frame in a single render pass. However, in
 
 ![Render Passes Diagram](images/render_passes_diagram.png)
 
- Note that there is a dependency because the second pass uses the output of the first. Since these are two separate render passes we cannot use a ``VkSubpassDependency`` for synchronization. Instead ``VkImageMemoryBarrier`` is used.
+ Note that there is a dependency because the second pass is using the output of the first. Since these are two separate render passes we cannot use a ``VkSubpassDependency`` for synchronization. Instead ``VkImageMemoryBarrier`` is used.
 
 ## The Multi-threading Render Passes Sample
 
@@ -88,11 +88,11 @@ And indeed, in debug build, which was used for profiling, frame time is decrease
 **Do**
 
 * Use multi-threading for command buffer recording if possible.
-* Prefer using secondary command buffers over submitting multiple primary command buffers to the queue at once.
+* Spread the workload between threads as equally, as possible, to utilize them in the most efficient way.
 
 **Avoid**
 
-* Avoid having a separate thread for each renderpass if their workloads are significantly different.
+* Submitting multiple primary command buffers to the queue at once, when secondary command buffers can be used.
 
 **Impact**
 
